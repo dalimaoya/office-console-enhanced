@@ -1,0 +1,11 @@
+id: tech-bridge
+name: 技术对接助手
+description: 技术类技能组合
+version: 1.0.0
+category: tech
+config:
+  model:
+    primary: codex
+  skills:
+    - github
+    - coding-agent

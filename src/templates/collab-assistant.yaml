@@ -1,0 +1,12 @@
+id: collab-assistant
+name: 协作沟通助手
+description: 飞书文档/表格协同
+version: 1.0.0
+category: office
+config:
+  model:
+    primary: openai-codex/gpt-5.4
+  skills:
+    - feishu-doc
+    - feishu-drive
+    - feishu-wiki

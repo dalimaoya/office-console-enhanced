@@ -1,0 +1,11 @@
+id: doc-processor
+name: 文档处理助手
+description: 聚焦 docx/pdf 转换
+version: 1.0.0
+category: office
+config:
+  model:
+    primary: openai-codex/gpt-5.4
+  skills:
+    - docx
+    - pdf

@@ -1,0 +1,687 @@
+const state = {
+  route: 'dashboard',
+  selectedTemplateId: null,
+  selectedAgentId: '',
+  dashboard: null,
+  health: null,
+  templates: [],
+  agents: [],
+  templatesPayload: null,
+  agentsPayload: null,
+  templateDetailPayload: null,
+  pending: {
+    dashboard: false,
+    health: false,
+    config: false,
+    apply: false,
+  },
+  applyFeedback: {
+    kind: '',
+    text: '',
+    title: '',
+    detail: '',
+    debugMeta: null,
+  },
+  debugMeta: {
+    dashboard: null,
+    health: null,
+    templates: null,
+    agents: null,
+    templateDetail: null,
+  },
+};
+
+const $ = (selector) => document.querySelector(selector);
+const els = {
+  pageTitle: $('#page-title'),
+  refreshPage: $('#refresh-page'),
+  refreshHealth: $('#refresh-health'),
+  refreshConfig: $('#refresh-config'),
+  healthPill: $('#health-pill'),
+  dashboardState: $('#dashboard-state'),
+  dashboardMeta: $('#dashboard-meta'),
+  dashboardMetrics: $('#dashboard-metrics'),
+  healthState: $('#health-state'),
+  workspaceList: $('#workspace-list'),
+  alertsList: $('#alerts-list'),
+  configState: $('#config-state'),
+  templatesList: $('#templates-list'),
+  templateMeta: $('#template-meta'),
+  templateDetail: $('#template-detail'),
+};
+
+function routeFromLocation() {
+  return window.location.pathname === '/config' ? 'config' : 'dashboard';
+}
+
+function setButtonLoading(button, loading, loadingText, idleText) {
+  if (!button) return;
+  button.disabled = loading;
+  button.textContent = loading ? loadingText : idleText;
+}
+
+function syncUrl(route) {
+  const expectedPath = route === 'config' ? '/config' : '/dashboard';
+  if (window.location.pathname !== expectedPath) {
+    window.history.replaceState({}, '', expectedPath);
+  }
+}
+
+function setRoute(route) {
+  state.route = route;
+  syncUrl(route);
+  document.querySelectorAll('.nav-link').forEach((button) => {
+    button.classList.toggle('active', button.dataset.route === route);
+  });
+  document.querySelectorAll('.page').forEach((page) => {
+    page.classList.toggle('active', page.id === `${route}-page`);
+  });
+  els.pageTitle.textContent = route === 'dashboard' ? 'Dashboard' : 'Config';
+}
+
+function stateClass(kind) {
+  return kind === 'error'
+    ? 'error'
+    : kind === 'warning'
+      ? 'warning'
+      : kind === 'success'
+        ? 'success'
+        : 'loading';
+}
+
+function renderStatusBox(element, { kind, text }) {
+  element.className = `state-box ${stateClass(kind)}`;
+  element.textContent = text;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+function normalizeErrorPayload(error, fallbackCode = 'NETWORK_ERROR', fallbackMessage = 'network error') {
+  return {
+    success: false,
+    error: {
+      code: error?.code || fallbackCode,
+      message: error?.message || fallbackMessage,
+      ...(error?.detail ? { detail: error.detail } : {}),
+    },
+  };
+}
+
+function extractDebugMeta(response) {
+  if (!response?.headers) return null;
+  const requestId = response.headers.get('x-request-id') || '';
+  const cacheStatus = response.headers.get('x-cache-status') || '';
+  const errorCode = response.headers.get('x-error-code') || '';
+  const warningType = response.headers.get('x-warning-type') || '';
+  if (!requestId && !cacheStatus && !errorCode && !warningType) return null;
+  return {
+    requestId,
+    cacheStatus,
+    errorCode,
+    warningType,
+  };
+}
+
+function renderDebugMeta(meta, title = '联调信息') {
+  if (!meta) return '';
+  const rows = [
+    meta.requestId ? ['X-Request-Id', meta.requestId] : null,
+    meta.cacheStatus ? ['X-Cache-Status', meta.cacheStatus] : null,
+    meta.errorCode ? ['X-Error-Code', meta.errorCode] : null,
+    meta.warningType ? ['X-Warning-Type', meta.warningType] : null,
+  ].filter(Boolean);
+  if (!rows.length) return '';
+  return `
+    <div class="debug-meta">
+      <div class="debug-meta-title">${escapeHtml(title)}</div>
+      <div class="debug-meta-grid">
+        ${rows.map(([label, value]) => `
+          <div class="debug-chip">
+            <span>${escapeHtml(label)}</span>
+            <code>${escapeHtml(value)}</code>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const debugMeta = extractDebugMeta(response);
+  const rawText = await response.text();
+  let payload;
+  try {
+    payload = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    payload = normalizeErrorPayload({
+      code: 'INVALID_JSON_RESPONSE',
+      message: `接口返回了非 JSON 响应（HTTP ${response.status}）`,
+      detail: rawText.slice(0, 400),
+    });
+  }
+  return { ok: response.ok, status: response.status, payload, debugMeta };
+}
+
+function getSourceLabel(payload) {
+  if (!payload?.success) return '不可用';
+  return `${payload.cached ? 'cached' : 'fresh'}${payload.stale ? ' · stale' : ''}`;
+}
+
+function applyDataStateMessage(payload, loadingText, successText) {
+  if (!payload) return { kind: 'loading', text: loadingText };
+  if (!payload.success) return { kind: 'error', text: `${payload.error.code}｜${payload.error.message}` };
+  if (payload.stale) return { kind: 'warning', text: payload.warning?.message || '当前展示为 stale 降级缓存数据' };
+  return { kind: 'success', text: successText };
+}
+
+function renderErrorCard(payload, actionText = '请稍后重试') {
+  const error = payload?.error || {};
+  return `
+    <div class="state-box error stack">
+      <div><strong>${escapeHtml(error.code || 'UNKNOWN_ERROR')}</strong>｜${escapeHtml(error.message || '请求失败')}</div>
+      ${error.detail ? `<div class="detail-box"><div class="muted">detail（与后端 error.detail、结构化日志中 detail 一致）</div><pre>${escapeHtml(error.detail)}</pre></div>` : ''}
+      <div class="muted">${escapeHtml(actionText)}</div>
+    </div>
+  `;
+}
+
+function renderDataSourceSummary(label, payload) {
+  const stateText = !payload
+    ? '加载中'
+    : !payload.success
+      ? '失败'
+      : payload.stale
+        ? 'stale'
+        : '正常';
+  const desc = !payload
+    ? '加载中'
+    : !payload.success
+      ? `${payload.error.code}｜${payload.error.message}`
+      : payload.stale
+        ? (payload.warning?.message || '使用缓存降级数据')
+        : '数据可正常操作';
+  return `
+    <div class="summary-card ${stateClass(!payload ? 'loading' : !payload.success ? 'error' : payload.stale ? 'warning' : 'success')}">
+      <div class="muted">${escapeHtml(label)}</div>
+      <strong>${escapeHtml(stateText)}</strong>
+      <div class="muted">${escapeHtml(desc)}</div>
+    </div>
+  `;
+}
+
+function renderConfigDebugSection() {
+  return `
+    <div class="debug-stack">
+      ${renderDebugMeta(state.debugMeta.templates, '模板列表调试头')}
+      ${renderDebugMeta(state.debugMeta.agents, 'Agent 列表调试头')}
+      ${renderDebugMeta(state.debugMeta.templateDetail, '模板详情调试头')}
+    </div>
+  `;
+}
+
+function renderApplyFeedback() {
+  if (!state.applyFeedback.text && !state.applyFeedback.detail) {
+    return '<div id="apply-message" class="inline-message muted">选择目标 Agent 后即可应用模板。</div>';
+  }
+  return `
+    <div id="apply-message" class="feedback-card ${state.applyFeedback.kind || 'loading'}" title="${escapeHtml(state.applyFeedback.title || '')}">
+      <div class="feedback-title">${escapeHtml(state.applyFeedback.text || '')}</div>
+      ${state.applyFeedback.detail ? `<pre class="feedback-detail">${escapeHtml(state.applyFeedback.detail)}</pre>` : ''}
+      ${renderDebugMeta(state.applyFeedback.debugMeta, '本次 apply 调试头')}
+    </div>
+  `;
+}
+
+function clearApplyFeedback() {
+  state.applyFeedback = { kind: '', text: '', title: '', detail: '', debugMeta: null };
+}
+
+async function loadDashboard() {
+  state.pending.dashboard = true;
+  setButtonLoading(els.refreshPage, true, '刷新中…', '手动刷新');
+  renderStatusBox(els.dashboardState, { kind: 'loading', text: 'Dashboard 加载中…' });
+  try {
+    const { payload, debugMeta } = await apiFetch('/api/v1/dashboard');
+    state.dashboard = payload;
+    state.debugMeta.dashboard = debugMeta;
+  } catch (error) {
+    state.dashboard = normalizeErrorPayload({ message: error.message || 'network error' });
+    state.debugMeta.dashboard = null;
+  } finally {
+    state.pending.dashboard = false;
+    if (!state.pending.health && !state.pending.config) setButtonLoading(els.refreshPage, false, '刷新中…', '手动刷新');
+  }
+  renderDashboard();
+}
+
+async function loadHealth() {
+  state.pending.health = true;
+  setButtonLoading(els.refreshHealth, true, '刷新中…', '刷新健康');
+  setButtonLoading(els.refreshPage, true, '刷新中…', '手动刷新');
+  els.healthState.innerHTML = '<div class="muted">健康状态加载中…</div>';
+  try {
+    const { payload, debugMeta } = await apiFetch('/api/v1/health');
+    state.health = payload;
+    state.debugMeta.health = debugMeta;
+  } catch (error) {
+    state.health = normalizeErrorPayload({ message: error.message || 'network error' });
+    state.debugMeta.health = null;
+  } finally {
+    state.pending.health = false;
+    setButtonLoading(els.refreshHealth, false, '刷新中…', '刷新健康');
+    if (!state.pending.dashboard && !state.pending.config) setButtonLoading(els.refreshPage, false, '刷新中…', '手动刷新');
+  }
+  renderHealth();
+}
+
+async function loadConfigOverview() {
+  state.pending.config = true;
+  setButtonLoading(els.refreshConfig, true, '刷新中…', '刷新模板/Agent');
+  setButtonLoading(els.refreshPage, true, '刷新中…', '手动刷新');
+  renderStatusBox(els.configState, { kind: 'loading', text: '模板与 Agent 数据加载中…' });
+  try {
+    const [templatesRes, agentsRes] = await Promise.all([
+      apiFetch('/api/v1/config/templates'),
+      apiFetch('/api/v1/agents'),
+    ]);
+    state.templatesPayload = templatesRes.payload;
+    state.agentsPayload = agentsRes.payload;
+    state.debugMeta.templates = templatesRes.debugMeta;
+    state.debugMeta.agents = agentsRes.debugMeta;
+    state.templates = templatesRes.payload.success ? (templatesRes.payload.data.items || []) : [];
+    state.agents = agentsRes.payload.success ? (agentsRes.payload.data.items || []) : [];
+
+    if (!state.templates.find((item) => item.id === state.selectedTemplateId)) {
+      state.selectedTemplateId = state.templates[0]?.id || null;
+      state.templateDetailPayload = null;
+      clearApplyFeedback();
+    }
+    if (!state.agents.find((item) => item.id === state.selectedAgentId)) {
+      state.selectedAgentId = '';
+    }
+  } catch (error) {
+    state.templatesPayload = normalizeErrorPayload({ message: error.message || 'network error' });
+    state.agentsPayload = normalizeErrorPayload({ message: error.message || 'network error' });
+    state.debugMeta.templates = null;
+    state.debugMeta.agents = null;
+    state.templates = [];
+    state.agents = [];
+    state.selectedTemplateId = null;
+    state.selectedAgentId = '';
+    state.templateDetailPayload = null;
+  } finally {
+    state.pending.config = false;
+    setButtonLoading(els.refreshConfig, false, '刷新中…', '刷新模板/Agent');
+    if (!state.pending.dashboard && !state.pending.health) setButtonLoading(els.refreshPage, false, '刷新中…', '手动刷新');
+  }
+
+  renderConfig();
+  if (state.selectedTemplateId) {
+    await loadTemplateDetail(state.selectedTemplateId);
+  } else {
+    els.templateMeta.textContent = '暂无模板';
+    els.templateDetail.innerHTML = `
+      <div class="empty-box stack">
+        <strong>当前没有可展示模板</strong>
+        <div class="muted">请先检查 /api/v1/config/templates 返回，或点击“刷新模板/Agent”重试。</div>
+      </div>
+    `;
+  }
+}
+
+async function loadTemplateDetail(templateId) {
+  state.selectedTemplateId = templateId;
+  els.templateMeta.textContent = '详情加载中…';
+  els.templateDetail.innerHTML = '<div class="empty-box">模板详情加载中…</div>';
+  try {
+    const { payload, debugMeta } = await apiFetch(`/api/v1/config/templates/${templateId}`);
+    state.templateDetailPayload = payload;
+    state.debugMeta.templateDetail = debugMeta;
+  } catch (error) {
+    state.templateDetailPayload = normalizeErrorPayload({ message: error.message || 'network error' });
+    state.debugMeta.templateDetail = null;
+  }
+  renderTemplatesList();
+  renderTemplateDetail();
+}
+
+function renderDashboard() {
+  const payload = state.dashboard;
+  renderStatusBox(els.dashboardState, applyDataStateMessage(payload, 'Dashboard 加载中…', 'Dashboard 数据已更新'));
+
+  if (!payload?.success) {
+    els.dashboardMeta.textContent = '请求失败';
+    els.dashboardMetrics.innerHTML = `
+      ${renderErrorCard(payload, '请检查 /api/v1/dashboard 返回，或点击“手动刷新”重试。')}
+      ${renderDebugMeta(state.debugMeta.dashboard, 'Dashboard 调试头')}
+    `;
+    els.workspaceList.innerHTML = '<div class="empty-box">Dashboard 失败时不展示工作区活动。</div>';
+    els.alertsList.innerHTML = '<div class="empty-box">Dashboard 失败时不展示告警摘要。</div>';
+    return;
+  }
+
+  const { system = {}, agents = {}, workspaces = {}, alerts = [] } = payload.data || {};
+  const sourceLabel = getSourceLabel(payload);
+  els.dashboardMeta.textContent = `${sourceLabel} · lastCheck ${system.lastCheck || '未知'}`;
+
+  const metrics = [
+    ['系统状态', system.status || 'unknown'],
+    ['运行时长', system.uptime || '未知'],
+    ['Agent 活跃数', `${agents.active ?? 0}/${agents.total ?? 0}`],
+    ['平均响应', system.performance?.avgResponseMs != null ? `${system.performance.avgResponseMs}ms` : '未知'],
+  ];
+
+  els.dashboardMetrics.innerHTML = `
+    ${payload.stale ? `<div class="state-box warning">当前展示的是 stale 降级缓存数据，可继续查看，但建议稍后再次手动刷新确认最新状态。</div>` : ''}
+    <div class="metrics">${metrics.map(([label, value]) => `<div class="metric-card"><div class="muted">${label}</div><div class="metric-value">${escapeHtml(value)}</div></div>`).join('')}</div>
+    ${renderDebugMeta(state.debugMeta.dashboard, 'Dashboard 调试头')}
+  `;
+
+  const recentActivity = workspaces.recentActivity || [];
+  els.workspaceList.innerHTML = recentActivity.length
+    ? recentActivity.map((item) => `
+      <div class="workspace-card">
+        <strong>${escapeHtml(item.name)}</strong>
+        <div class="muted">状态：${escapeHtml(item.status)} · Agent：${escapeHtml(item.agentCount)}</div>
+        <div class="muted">最近更新：${escapeHtml(item.lastUpdated)}</div>
+      </div>
+    `).join('')
+    : '<div class="empty-box">暂无工作区活动数据。若刚完成刷新且仍为空，可按当前环境视为“无活动”而非失败。</div>';
+
+  els.alertsList.innerHTML = alerts.length
+    ? alerts.map((item) => `
+      <div class="alert-card">
+        <strong>${escapeHtml(String(item.level || '').toUpperCase())} · ${escapeHtml(item.type)}</strong>
+        <div>${escapeHtml(item.message)}</div>
+        <div class="muted">建议：${escapeHtml(item.suggestion || '无')}</div>
+        <div class="muted">${escapeHtml(item.timestamp)}</div>
+      </div>
+    `).join('')
+    : '<div class="empty-box">当前无告警，可继续关注健康状态与手动刷新结果。</div>';
+}
+
+function renderHealth() {
+  const payload = state.health;
+  if (!payload) {
+    els.healthPill.className = 'pill neutral';
+    els.healthPill.textContent = '等待检查';
+    return;
+  }
+
+  if (!payload.success) {
+    els.healthPill.className = 'pill danger';
+    els.healthPill.textContent = '健康检查失败';
+    els.healthState.innerHTML = `
+      ${renderErrorCard(payload, '请检查 Gateway / 服务状态后重试健康刷新。')}
+      ${renderDebugMeta(state.debugMeta.health, 'Health 调试头')}
+    `;
+    return;
+  }
+
+  const stale = Boolean(payload.stale);
+  const gatewayStatus = payload.data?.gateway?.status || 'unknown';
+  const serviceStatus = payload.data?.service?.status || 'unknown';
+  const pillClass = stale || gatewayStatus !== 'ok' ? 'warning' : 'success';
+  els.healthPill.className = `pill ${pillClass}`;
+  els.healthPill.textContent = stale ? 'Stale 健康数据' : gatewayStatus === 'ok' ? 'Gateway 正常' : `Gateway ${gatewayStatus}`;
+  els.healthState.innerHTML = `
+    <div class="stack gap-sm">
+      ${stale ? `<div class="state-box warning">当前健康信息来自缓存降级数据，适合查看趋势，不代表 Gateway 已恢复。</div>` : ''}
+      <div class="list-card stack gap-sm">
+        <div><strong>service</strong>：${escapeHtml(serviceStatus)}</div>
+        <div><strong>gateway</strong>：${escapeHtml(gatewayStatus)}</div>
+        <div class="muted">checkedAt：${escapeHtml(payload.data?.checkedAt || '未知')}</div>
+        <div class="muted">source：${escapeHtml(getSourceLabel(payload))}</div>
+        ${payload.warning?.message ? `<div class="muted">warning：${escapeHtml(payload.warning.message)}</div>` : ''}
+      </div>
+      ${renderDebugMeta(state.debugMeta.health, 'Health 调试头')}
+    </div>
+  `;
+}
+
+function renderTemplatesList() {
+  const listPayload = state.templatesPayload;
+  if (!listPayload) return;
+
+  if (!listPayload.success) {
+    els.templatesList.innerHTML = renderErrorCard(listPayload, '模板列表不可用时，无法继续选择模板。请先刷新模板/Agent。');
+    return;
+  }
+
+  if (!state.templates.length) {
+    els.templatesList.innerHTML = '<div class="empty-box">模板列表为空。当前按空态处理，不视为前端异常。</div>';
+    return;
+  }
+
+  els.templatesList.innerHTML = `
+    ${listPayload.stale ? '<div class="state-box warning">模板列表当前为 stale 缓存数据，可查看并继续联调，但建议后续再刷新确认。</div>' : ''}
+    ${state.templates.map((item) => `
+      <button class="template-card ${item.id === state.selectedTemplateId ? 'active' : ''}" data-template-id="${item.id}">
+        <h4>${escapeHtml(item.name)}</h4>
+        <div class="muted">${escapeHtml(item.description)}</div>
+        <div class="muted">${escapeHtml(item.category)} · v${escapeHtml(item.version)}</div>
+      </button>
+    `).join('')}
+  `;
+}
+
+function renderTemplateDetail() {
+  const payload = state.templateDetailPayload;
+  if (!payload) return;
+
+  if (!payload.success) {
+    els.templateMeta.textContent = '详情失败';
+    els.templateDetail.innerHTML = renderErrorCard(payload, '模板详情拉取失败时，暂不允许继续 apply。');
+    return;
+  }
+
+  const { id, name, description, version, category, config, rawYaml } = payload.data;
+  const agents = state.agents || [];
+  const templatesSummary = renderDataSourceSummary('模板列表', state.templatesPayload);
+  const agentsSummary = renderDataSourceSummary('Agent 列表', state.agentsPayload);
+  const canApply = !state.pending.apply && state.agentsPayload?.success && agents.length > 0;
+  const selectedAgent = agents.find((agent) => agent.id === state.selectedAgentId);
+
+  els.templateMeta.textContent = `${category} · v${version}`;
+  els.templateDetail.innerHTML = `
+    <div class="template-detail-header">
+      <div>
+        <h3>${escapeHtml(name)}</h3>
+        <div class="muted">${escapeHtml(description)}</div>
+        <div class="template-meta-row muted">ID: <span>${escapeHtml(id)}</span></div>
+      </div>
+      <span class="pill neutral">${Object.keys(config || {}).length} fields</span>
+    </div>
+
+    <div class="summary-grid">
+      ${templatesSummary}
+      ${agentsSummary}
+    </div>
+
+    ${(state.templatesPayload?.stale || state.agentsPayload?.stale)
+      ? '<div class="state-box warning">当前 Config 页存在 stale 数据。可继续查看/验证展示，但 apply 前建议结合后端与 QA 再确认运行态表现。</div>'
+      : ''}
+
+    ${!state.agentsPayload?.success
+      ? '<div class="state-box error">Agent 列表当前不可用，无法执行模板应用。</div>'
+      : ''}
+
+    ${state.agentsPayload?.success && !agents.length
+      ? '<div class="empty-box">当前没有可选 Agent，apply 暂不可操作。</div>'
+      : ''}
+
+    ${renderConfigDebugSection()}
+
+    <label>
+      <div class="muted">目标 Agent</div>
+      <select id="apply-agent-select" ${canApply ? '' : 'disabled'}>
+        <option value="">请选择目标 Agent</option>
+        ${agents.map((agent) => `<option value="${escapeHtml(agent.id)}" ${agent.id === state.selectedAgentId ? 'selected' : ''}>${escapeHtml(agent.name)} (${escapeHtml(agent.id)})</option>`).join('')}
+      </select>
+      <div class="muted">${selectedAgent ? `当前选择：${selectedAgent.name} (${selectedAgent.id})` : '尚未选择目标 Agent。'}</div>
+    </label>
+
+    <div class="form-actions">
+      <button id="apply-template" class="primary-button" ${canApply ? '' : 'disabled'}>${state.pending.apply ? '应用中…' : '应用模板'}</button>
+      ${renderApplyFeedback()}
+    </div>
+
+    <div class="list-card stack gap-sm">
+      <strong>config 预览</strong>
+      <pre>${escapeHtml(JSON.stringify(config, null, 2))}</pre>
+    </div>
+
+    <div class="list-card stack gap-sm">
+      <strong>rawYaml 只读预览</strong>
+      <pre>${escapeHtml(rawYaml)}</pre>
+    </div>
+  `;
+
+  const applyButton = $('#apply-template');
+  const select = $('#apply-agent-select');
+  select?.addEventListener('change', () => {
+    state.selectedAgentId = select.value || '';
+    renderTemplateDetail();
+  });
+
+  applyButton?.addEventListener('click', async () => {
+    const targetAgentId = select?.value || '';
+    state.selectedAgentId = targetAgentId;
+
+    if (!targetAgentId) {
+      state.applyFeedback = {
+        kind: 'warning',
+        text: '请选择目标 Agent 后再应用。',
+        title: '',
+        detail: 'POST /api/v1/config/templates/:id/apply 仅接受 targetAgentId 作为必要请求体字段。',
+        debugMeta: null,
+      };
+      renderTemplateDetail();
+      return;
+    }
+
+    state.pending.apply = true;
+    state.applyFeedback = {
+      kind: 'loading',
+      text: '应用中…',
+      title: '',
+      detail: `正在向 ${targetAgentId} 应用模板，完成后会更新反馈。`,
+      debugMeta: null,
+    };
+    renderTemplateDetail();
+
+    try {
+      const { payload: applyPayload, debugMeta } = await apiFetch(`/api/v1/config/templates/${state.selectedTemplateId}/apply`, {
+        method: 'POST',
+        body: JSON.stringify({ targetAgentId }),
+      });
+
+      if (!applyPayload.success) {
+        state.applyFeedback = {
+          kind: 'error',
+          text: `${applyPayload.error.code}｜${applyPayload.error.message}`,
+          title: applyPayload.error.detail || '',
+          detail: applyPayload.error.detail || '后端未返回 detail，可结合服务日志继续排查。',
+          debugMeta,
+        };
+        return;
+      }
+
+      state.applyFeedback = {
+        kind: applyPayload.stale ? 'warning' : 'success',
+        text: `${applyPayload.data.message} · ${applyPayload.data.targetAgentId}`,
+        title: applyPayload.data.runtimeEffect ? `runtimeEffect: ${applyPayload.data.runtimeEffect}` : '',
+        detail: [
+          applyPayload.data.appliedFields?.length ? `appliedFields: ${applyPayload.data.appliedFields.join(', ')}` : '',
+          applyPayload.data.effectiveScope ? `effectiveScope: ${applyPayload.data.effectiveScope}` : '',
+          applyPayload.data.runtimeEffect ? `runtimeEffect: ${applyPayload.data.runtimeEffect}` : '',
+          applyPayload.data.appliedAt ? `appliedAt: ${applyPayload.data.appliedAt}` : '',
+        ].filter(Boolean).join('\n'),
+        debugMeta,
+      };
+    } catch (error) {
+      state.applyFeedback = {
+        kind: 'error',
+        text: error.message || 'apply failed',
+        title: '',
+        detail: '前端请求阶段失败，请检查网络或服务可达性。',
+        debugMeta: null,
+      };
+    } finally {
+      state.pending.apply = false;
+      renderTemplateDetail();
+    }
+  });
+}
+
+function renderConfig() {
+  const templatesState = applyDataStateMessage(state.templatesPayload, '模板列表加载中…', '模板列表已更新');
+  const agentsState = applyDataStateMessage(state.agentsPayload, 'Agent 列表加载中…', 'Agent 列表已更新');
+
+  const finalState = templatesState.kind === 'error' || agentsState.kind === 'error'
+    ? { kind: 'error', text: `模板：${templatesState.text}；Agent：${agentsState.text}` }
+    : templatesState.kind === 'warning' || agentsState.kind === 'warning'
+      ? { kind: 'warning', text: '存在 stale 数据，请注意当前展示可能不是最新运行态。' }
+      : !state.templates.length
+        ? { kind: 'warning', text: '模板数据已更新，但当前没有可展示模板。' }
+        : !state.agents.length
+          ? { kind: 'warning', text: '模板数据已更新，但当前没有可操作 Agent。' }
+          : { kind: 'success', text: '模板与 Agent 数据已更新，可继续查看详情与执行 apply。' };
+
+  renderStatusBox(els.configState, finalState);
+  renderTemplatesList();
+}
+
+async function refreshCurrentPage() {
+  if (state.route === 'dashboard') {
+    await Promise.all([loadDashboard(), loadHealth()]);
+    return;
+  }
+  await loadConfigOverview();
+}
+
+document.querySelectorAll('.nav-link').forEach((button) => {
+  button.addEventListener('click', async () => {
+    setRoute(button.dataset.route);
+    if (button.dataset.route === 'config' && !state.templatesPayload) {
+      await loadConfigOverview();
+    }
+  });
+});
+
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-template-id]');
+  if (button) {
+    clearApplyFeedback();
+    await loadTemplateDetail(button.dataset.templateId);
+  }
+});
+
+window.addEventListener('popstate', async () => {
+  const route = routeFromLocation();
+  setRoute(route);
+  if (route === 'config' && !state.templatesPayload) {
+    await loadConfigOverview();
+  }
+});
+
+els.refreshPage.addEventListener('click', refreshCurrentPage);
+els.refreshHealth.addEventListener('click', loadHealth);
+els.refreshConfig.addEventListener('click', loadConfigOverview);
+
+const initialRoute = routeFromLocation();
+setRoute(initialRoute);
+if (initialRoute === 'config') {
+  await loadConfigOverview();
+} else {
+  await Promise.all([loadDashboard(), loadHealth()]);
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试 - 会话详情侧边栏</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-button {
+            padding: 12px 24px;
+            background: #4c6ef5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>功能测试</h1>
+    <p>测试项目：迭代3前端增强任务</p>
+    <ul>
+        <li>SSE 指数退避重连 (已实现)</li>
+        <li>Collaboration 父子关系树增强 (已实现)</li>
+        <li>会话详情侧边栏 (已实现)</li>
+        <li>点击测试按钮模拟打开会话详情</li>
+    </ul>
+    
+    <button class="test-button" id="test-open">打开会话详情侧边栏</button>
+    
+    <script>
+        // 测试会话详情侧边栏
+        document.getElementById('test-open').addEventListener('click', () => {
+            // 模拟一个会话对象
+            const mockSession = {
+                id: 'test-session-001',
+                agentId: 'agent-frontend-ezreal',
+                channel: 'feishu',
+                status: 'running',
+                startedAt: new Date().toISOString(),
+                parentSessionId: 'parent-001'
+            };
+            
+            // 调用全局函数（需要确保 app.js 已加载）
+            if (typeof openSessionDetail === 'function') {
+                openSessionDetail(mockSession);
+            } else {
+                alert('app.js 尚未加载或 openSessionDetail 函数未定义');
+            }
+        });
+    </script>
+    
+    <!-- 加载主应用，确保函数可用 -->
+    <script src="app.js"></script>
+</body>
+</html>

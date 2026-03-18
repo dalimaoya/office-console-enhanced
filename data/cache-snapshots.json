@@ -1,0 +1,356 @@
+{
+  "health": {
+    "value": {
+      "service": {
+        "status": "ok"
+      },
+      "gateway": {
+        "status": "ok"
+      },
+      "checkedAt": "2026-03-18T18:17:10.826Z"
+    },
+    "fetchedAt": 1773857830813,
+    "expiresAt": 1773857845813,
+    "staleUntil": 1773857890813
+  },
+  "templates.list": {
+    "value": {
+      "items": [
+        {
+          "id": "blank",
+          "name": "空模板",
+          "description": "用户自定义起点",
+          "version": "1.0.0",
+          "category": "starter"
+        },
+        {
+          "id": "collab-assistant",
+          "name": "协作沟通助手",
+          "description": "飞书文档/表格协同",
+          "version": "1.0.0",
+          "category": "office"
+        },
+        {
+          "id": "doc-processor",
+          "name": "文档处理助手",
+          "description": "聚焦 docx/pdf 转换",
+          "version": "1.0.0",
+          "category": "office"
+        },
+        {
+          "id": "office-basic",
+          "name": "基础办公助手",
+          "description": "通用办公技能组合",
+          "version": "1.0.0",
+          "category": "office"
+        },
+        {
+          "id": "tech-bridge",
+          "name": "技术对接助手",
+          "description": "技术类技能组合",
+          "version": "1.0.0",
+          "category": "tech"
+        }
+      ],
+      "total": 5
+    },
+    "fetchedAt": 1773857037693,
+    "expiresAt": 1773857337693,
+    "staleUntil": 1773858837693
+  },
+  "agents": {
+    "value": {
+      "items": [
+        {
+          "id": "main",
+          "name": "Azir",
+          "status": "idle",
+          "lastActive": "2026-03-18T16:53:25.702Z",
+          "summaryTags": [
+            "main",
+            "idle"
+          ],
+          "statusDetail": {
+            "state": "idle",
+            "lastActiveAt": "2026-03-18T16:53:25.702Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-aioffice-jayce",
+          "name": "杰斯",
+          "status": "idle",
+          "lastActive": "2026-03-17T09:38:00.280Z",
+          "summaryTags": [
+            "jayce",
+            "idle"
+          ],
+          "statusDetail": {
+            "state": "idle",
+            "lastActiveAt": "2026-03-17T09:38:00.280Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-architect-jax",
+          "name": "贾克斯",
+          "status": "idle",
+          "lastActive": "2026-03-17T05:34:55.755Z",
+          "summaryTags": [
+            "jax",
+            "idle"
+          ],
+          "statusDetail": {
+            "state": "idle",
+            "lastActiveAt": "2026-03-17T05:34:55.755Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-backend-leona",
+          "name": "雷欧娜",
+          "status": "working",
+          "lastActive": "2026-03-18T18:01:45.842Z",
+          "summaryTags": [
+            "leona",
+            "working"
+          ],
+          "statusDetail": {
+            "state": "working",
+            "lastActiveAt": "2026-03-18T18:01:45.842Z",
+            "currentTask": "迭代2 后端任务（Leona）",
+            "pendingTaskCount": 5
+          }
+        },
+        {
+          "id": "agent-codingqa-galio",
+          "name": "加里奥",
+          "status": "working",
+          "lastActive": "2026-03-18T18:03:44.105Z",
+          "summaryTags": [
+            "galio",
+            "working"
+          ],
+          "statusDetail": {
+            "state": "working",
+            "lastActiveAt": "2026-03-18T18:03:44.105Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-frontend-ezreal",
+          "name": "伊泽瑞尔",
+          "status": "backlog",
+          "lastActive": "2026-03-18T17:56:06.034Z",
+          "summaryTags": [
+            "ezreal",
+            "backlog"
+          ],
+          "statusDetail": {
+            "state": "backlog",
+            "lastActiveAt": "2026-03-18T17:56:06.034Z",
+            "currentTask": "迭代2 前端任务-B：待办聚合 + Cron + 接线诊断 UI（Ezreal，依赖 Leona 后端）",
+            "pendingTaskCount": 3
+          }
+        },
+        {
+          "id": "agent-orchestrator-teemo",
+          "name": "提莫",
+          "status": "working",
+          "lastActive": "2026-03-18T18:03:44.380Z",
+          "summaryTags": [
+            "teemo",
+            "working"
+          ],
+          "statusDetail": {
+            "state": "working",
+            "lastActiveAt": "2026-03-18T18:03:44.380Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-product-ekko",
+          "name": "艾克",
+          "status": "idle",
+          "lastActive": "2026-03-17T05:38:45.382Z",
+          "summaryTags": [
+            "ekko",
+            "idle"
+          ],
+          "statusDetail": {
+            "state": "idle",
+            "lastActiveAt": "2026-03-17T05:38:45.382Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-ui-lux",
+          "name": "拉克丝",
+          "status": "working",
+          "lastActive": "2026-03-18T18:02:59.302Z",
+          "summaryTags": [
+            "lux",
+            "working"
+          ],
+          "statusDetail": {
+            "state": "working",
+            "lastActiveAt": "2026-03-18T18:02:59.302Z",
+            "currentTask": "P0-4 设计：Design Token 系统（间距/字号/圆角 token 化）",
+            "pendingTaskCount": 1
+          }
+        },
+        {
+          "id": "agent-twisted-fate",
+          "name": "卡牌大师",
+          "status": "offline",
+          "lastActive": null,
+          "summaryTags": [
+            "fate",
+            "offline"
+          ],
+          "statusDetail": {
+            "state": "offline",
+            "lastActiveAt": null,
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-heimerdinger",
+          "name": "大发明家",
+          "status": "idle",
+          "lastActive": "2026-03-18T08:21:20.413Z",
+          "summaryTags": [
+            "heimerdinger",
+            "idle"
+          ],
+          "statusDetail": {
+            "state": "idle",
+            "lastActiveAt": "2026-03-18T08:21:20.413Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        },
+        {
+          "id": "agent-technical-advisor-codex",
+          "name": "瑞兹",
+          "status": "idle",
+          "lastActive": "2026-03-16T16:02:13.286Z",
+          "summaryTags": [
+            "codex",
+            "idle"
+          ],
+          "statusDetail": {
+            "state": "idle",
+            "lastActiveAt": "2026-03-16T16:02:13.286Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
+          }
+        }
+      ],
+      "total": 12
+    },
+    "fetchedAt": 1773857033534,
+    "expiresAt": 1773857093534,
+    "staleUntil": 1773857633534
+  },
+  "dashboard": {
+    "value": {
+      "system": {
+        "status": "warning",
+        "uptime": "14m",
+        "version": "OpenClaw v2026.3.11",
+        "lastCheck": "2026-03-18T18:17:14.624Z",
+        "performance": {
+          "avgResponseMs": 2103,
+          "health": "degrading"
+        }
+      },
+      "agents": {
+        "total": 12,
+        "active": 11,
+        "statusBreakdown": {
+          "working": 7,
+          "idle": 4,
+          "blocked": 0,
+          "backlog": 0,
+          "error": 0,
+          "offline": 1,
+          "unknown": 0
+        },
+        "quickStats": [
+          {
+            "name": "Task Success Rate",
+            "value": "92%",
+            "trend": "stable"
+          },
+          {
+            "name": "Avg Response Time",
+            "value": "2.1s",
+            "trend": "degrading"
+          }
+        ]
+      },
+      "workspaces": {
+        "activeCount": 5,
+        "recentActivity": [
+          {
+            "name": "未配置工作区",
+            "status": "active",
+            "agentCount": 1,
+            "lastUpdated": "2026-03-18T16:53:25.702Z"
+          },
+          {
+            "name": "workspace-agent-aioffice-jayce",
+            "status": "active",
+            "agentCount": 1,
+            "lastUpdated": "2026-03-18T18:14:00.482Z"
+          },
+          {
+            "name": "workspace-agent-architect-jax",
+            "status": "active",
+            "agentCount": 1,
+            "lastUpdated": "2026-03-18T18:11:42.136Z"
+          },
+          {
+            "name": "workspace-agent-backend-leona",
+            "status": "active",
+            "agentCount": 1,
+            "lastUpdated": "2026-03-18T18:14:19.894Z"
+          },
+          {
+            "name": "workspace-agent-codingqa-galio",
+            "status": "active",
+            "agentCount": 1,
+            "lastUpdated": "2026-03-18T18:14:28.198Z"
+          }
+        ]
+      },
+      "alerts": [
+        {
+          "level": "warning",
+          "type": "system_performance",
+          "message": "适配层最近一次聚合耗时偏高（2103ms）",
+          "suggestion": "优先依赖缓存结果，并检查 Gateway CLI/RPC 响应时间",
+          "timestamp": "2026-03-18T18:17:14.624Z"
+        },
+        {
+          "level": "warning",
+          "type": "agent_health",
+          "message": "Agent '卡牌大师' 最近活跃时间过久，当前可能离线",
+          "suggestion": "检查对应工作区运行情况",
+          "timestamp": "2026-03-18T18:17:14.624Z"
+        }
+      ]
+    },
+    "fetchedAt": 1773857830381,
+    "expiresAt": 1773857860381,
+    "staleUntil": 1773858430381
+  }
+}

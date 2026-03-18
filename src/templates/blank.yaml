@@ -1,0 +1,7 @@
+id: blank
+name: 空模板
+description: 用户自定义起点
+version: 1.0.0
+category: starter
+config:
+  skills: []

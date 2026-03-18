@@ -1,0 +1,12 @@
+id: office-basic
+name: 基础办公助手
+description: 通用办公技能组合
+version: 1.0.0
+category: office
+config:
+  model:
+    primary: openai-codex/gpt-5.4
+  skills:
+    - feishu-doc
+    - feishu-drive
+    - xlsx
