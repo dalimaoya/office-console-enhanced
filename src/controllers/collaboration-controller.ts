@@ -12,7 +12,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sendSuccess } from '../utils/responses.js';
-import { listSessions, getSession, getSessionMessages } from '../services/collaboration-service.js';
+import { listSessions, getSession, getSessionMessages, getCollaborationGraph } from '../services/collaboration-service.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
 const RUNS_FILE = join(OPENCLAW_ROOT, 'subagents', 'runs.json');
@@ -77,6 +77,25 @@ export async function getCollaboration(req: Request, res: Response, next: NextFu
 
     items.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
     return sendSuccess(res, items);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** GET /api/v1/collaboration/graph — 协作流向图（nodes + edges） */
+export async function getCollaborationGraphHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const graph = await getCollaborationGraph();
+    return res.json({
+      success: true,
+      data: {
+        nodes: graph.nodes,
+        edges: graph.edges,
+      },
+      nodeCount: graph.nodes.length,
+      edgeCount: graph.edges.length,
+      source: graph.source,
+    });
   } catch (error) {
     next(error);
   }

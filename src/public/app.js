@@ -664,6 +664,8 @@ async function loadDashboard() {
   state.pending.dashboard = true;
   setButtonLoading(els.refreshPage, true, '刷新中…', '强制重新加载');
   renderStatusBox(els.dashboardState, { kind: 'loading', text: '文件直读中…' });
+  // 骨架屏：KPI 卡片占位
+  if (els.dashboardMetrics) els.dashboardMetrics.innerHTML = skeletonKpiCards(5);
   try {
     const { payload, debugMeta } = await apiFetch('/api/v1/dashboard');
     state.dashboard = payload;
@@ -708,6 +710,9 @@ async function loadAgents() {
   setButtonLoading(els.refreshAgents, true, '刷新中…', '刷新 Agents');
   setButtonLoading(els.refreshPage, true, '刷新中…', '强制重新加载');
   renderStatusBox(els.agentsState, { kind: 'loading', text: 'Agent 列表加载中…' });
+  // 骨架屏：3 个 agent-card 占位
+  const zonesContainerSkeleton = document.getElementById('agents-zones-container');
+  if (zonesContainerSkeleton) zonesContainerSkeleton.innerHTML = skeletonAgentCards(3);
   try {
     const { payload, debugMeta } = await apiFetch('/api/v1/agents');
     state.agentsData = payload;
@@ -723,6 +728,8 @@ async function loadAgents() {
     }
   }
   renderAgents();
+  // P1-5: overview 页时同步刷新 agent summary 速览
+  if (state.route === 'overview') updateOverviewExtras();
 }
 
 // ─── Settings API ─────────────────────────────────────────────────────────────
@@ -1166,6 +1173,11 @@ function updateDashboardKPIs(data) {
   
   // 更新 Inspector
   updateInspectorSidebar();
+
+  // P1-5: 更新 Overview 就绪度 + Agent Summary（仅在 overview 页）
+  if (state.route === 'overview') {
+    updateOverviewExtras();
+  }
 }
 
 // 辅助函数
@@ -1340,10 +1352,17 @@ function renderAgents() {
       return `${Math.floor(hrs / 24)} 天前`;
     }
     
+    // P1-6：状态角标颜色映射（CC借鉴：avatar 右下角小圆点）
+    const dotColorMap = { working:'#22c55e', active:'#22c55e', idle:'#94a3b8', normal:'#94a3b8', offline:'#64748b', blocked:'#ef4444', error:'#ef4444', warning:'#f97316', backlog:'#f97316' };
+    const statusDotColor = dotColorMap[status] || '#94a3b8';
+
     return `
     <article class="agent-card" data-agent-id="${escapeHtml(agentId)}">
       <div class="agent-card-head">
-        <div class="agent-avatar-circle">${emoji}</div>
+        <div style="position:relative;flex-shrink:0">
+          <div class="agent-avatar-circle">${emoji}</div>
+          <span title="${escapeHtml(status)}" style="position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;border-radius:50%;border:2px solid var(--panel);background:${statusDotColor}"></span>
+        </div>
         <div style="flex:1;min-width:0">
           <div class="agent-card-name">
             ${escapeHtml(agentName)}
@@ -1666,6 +1685,94 @@ function renderTemplateDetail() {
   });
 }
 
+// ─── Skeleton helpers ─────────────────────────────────────────────────────────
+function skeletonKpiCards(count = 5) {
+  const card = `
+    <div class="skeleton-kpi-card">
+      <div class="skeleton-line" style="height:11px;width:55%"></div>
+      <div class="skeleton-line" style="height:32px;width:60%"></div>
+      <div class="skeleton-line" style="height:10px;width:40%"></div>
+    </div>`;
+  return `<div class="skeleton-kpi-grid">${card.repeat(count)}</div>`;
+}
+
+function skeletonAgentCards(count = 3) {
+  const card = `
+    <div class="skeleton-agent-card">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="skeleton-line" style="width:40px;height:40px;border-radius:50%;flex-shrink:0"></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div class="skeleton-line" style="height:13px;width:65%"></div>
+          <div class="skeleton-line" style="height:10px;width:45%"></div>
+        </div>
+      </div>
+      <div class="skeleton-line" style="height:10px;width:80%;margin-top:4px"></div>
+    </div>`;
+  return `<div class="skeleton-agent-grid">${card.repeat(count)}</div>`;
+}
+
+function skeletonTaskRows(count = 4) {
+  const row = `
+    <div class="skeleton-task-row">
+      <div class="skeleton-line" style="width:28px;height:11px;flex-shrink:0"></div>
+      <div class="skeleton-line" style="flex:1;height:13px"></div>
+      <div class="skeleton-line" style="width:60px;height:20px;flex-shrink:0;border-radius:20px"></div>
+      <div class="skeleton-line" style="width:70px;height:11px;flex-shrink:0"></div>
+      <div class="skeleton-line" style="width:80px;height:11px;flex-shrink:0"></div>
+    </div>`;
+  return `<div class="skeleton-task-list">${row.repeat(count)}</div>`;
+}
+
+// ─── Tasks State & Loader ─────────────────────────────────────────────────────
+const tasksState = {
+  data: null,   // Array from /api/v1/tasks, or null if not loaded / failed
+  pending: false,
+  error: null,
+};
+
+// Normalize a task record from API to the shape used in STATIC_TASKS
+function normalizeApiTask(t, index) {
+  return {
+    id:       t.id       || t.taskId  || `task-api-${index}`,
+    filename: t.filename || t.file    || '',
+    name:     t.name     || t.title   || t.summary || `任务 #${index + 1}`,
+    status:   t.status   || 'active',
+    role:     t.role     || t.assignee || t.agentId || '',
+    date:     t.date     || t.updatedAt || t.createdAt || '',
+    size:     t.size     || '',
+    preview:  t.preview  || t.description || t.content || '',
+  };
+}
+
+async function loadTasks() {
+  tasksState.pending = true;
+  tasksState.error = null;
+
+  // Show skeleton in tasks board while loading
+  const board = document.querySelector('#tasks-board');
+  if (board) board.innerHTML = skeletonTaskRows(4);
+
+  try {
+    const { payload } = await apiFetch('/api/v1/tasks');
+    if (payload && payload.success) {
+      const raw = Array.isArray(payload.data)
+        ? payload.data
+        : (payload.data?.items || payload.data?.tasks || []);
+      tasksState.data = raw.map((t, i) => normalizeApiTask(t, i));
+    } else {
+      tasksState.data = null;
+      tasksState.error = payload?.error?.message || '加载失败';
+    }
+  } catch (err) {
+    tasksState.data = null;
+    tasksState.error = err.message || '网络错误';
+  } finally {
+    tasksState.pending = false;
+  }
+
+  renderTasks();
+}
+
 // ─── Tasks rendering ──────────────────────────────────────────────────────────
 function renderTasks() {
   const board = document.querySelector('#tasks-board');
@@ -1685,11 +1792,13 @@ function renderTasks() {
       filterBar.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       
-      // 筛选任务卡片（列表视图）
-      board.querySelectorAll('.task-card').forEach(card => {
-        const status = card.classList.contains('active') ? 'active' : 
-                      card.classList.contains('blocked') ? 'blocked' : 'done';
-        card.hidden = filter !== 'all' && status !== filter;
+      // 筛选任务行（列表视图）
+      board.querySelectorAll('.task-row').forEach(row => {
+        const taskId = row.dataset.taskId;
+        const taskSource = tasksState.data || STATIC_TASKS;
+        const task = taskSource.find(t => t.id === taskId);
+        const status = task?.status || 'done';
+        row.style.display = (filter === 'all' || status === filter) ? '' : 'none';
       });
       
       // 筛选看板视图
@@ -1736,8 +1845,16 @@ function renderTasks() {
 </div>`);
   }
 
+  // 使用 API 数据或 fallback 到静态数据
+  const activeTasks = tasksState.data || STATIC_TASKS;
+
+  // 如果加载出错，显示错误提示但仍用静态数据
+  if (tasksState.error && !tasksState.data) {
+    showToast({ type: 'warning', message: `任务数据加载失败（${tasksState.error}），已使用本地数据`, duration: 4000 });
+  }
+
   const grouped = { active: [], blocked: [], done: [] };
-  for (const task of STATIC_TASKS) {
+  for (const task of activeTasks) {
     (grouped[task.status] || grouped.done).push(task);
   }
 
@@ -1750,9 +1867,9 @@ function renderTasks() {
   // 任务状态 badge 映射
   function taskStatusBadge(status) {
     const map = {
-      active:  { cls: 'badge info',    icon: '🔵', label: '进行中' },
-      blocked: { cls: 'badge error',   icon: '🔴', label: '阻塞中' },
-      done:    { cls: 'badge ok',      icon: '✅', label: '已完成' },
+      active:  { cls: 'badge info',  icon: '🔵', label: '进行中' },
+      blocked: { cls: 'badge error', icon: '🔴', label: '阻塞中' },
+      done:    { cls: 'badge ok',    icon: '✅', label: '已完成' },
     };
     const entry = map[status] || { cls: 'badge idle', icon: '⚫', label: escapeHtml(status || '未知') };
     return `<span class="${entry.cls}">${entry.icon} ${entry.label}</span>`;
@@ -1761,38 +1878,27 @@ function renderTasks() {
   // 角色缩写（显示更紧凑）
   function roleShortName(role) {
     const knownRole = AGENT_CHINESE_NAMES[role];
-    if (knownRole) {
-      // 取括号前的名字
-      return knownRole.replace(/（.*）$/, '');
-    }
+    if (knownRole) return knownRole.replace(/（.*）$/, '');
     return role.replace(/^agent-/, '').replace(/-/g, ' ');
   }
 
-  board.innerHTML = colDefs.map(({ key, label, icon }) => `
-    <div class="task-col ${key}">
-      <div class="task-col-header">
-        ${icon} ${escapeHtml(label)}
-        <span class="col-badge">${grouped[key].length}</span>
-      </div>
-      ${grouped[key].length === 0
-        ? `<div class="muted" style="font-size:12px;padding:8px 0;">暂无任务</div>`
-        : grouped[key].map((task) => `
-          <button class="task-card ${task.status}" data-task-id="${escapeHtml(task.id)}">
-            <div class="task-card-name">${escapeHtml(task.name)}</div>
-            <div class="task-card-status-row">
-              ${taskStatusBadge(task.status)}
-              <span class="role-chip">${escapeHtml(roleShortName(task.role))}</span>
-            </div>
-            <div class="task-card-meta" style="margin-top:4px">
-              <span class="muted">📅 ${escapeHtml(task.date)}</span>
-              ${task.size && task.size !== '进行中' ? `<span class="muted">📄 ${escapeHtml(task.size)}</span>` : ''}
-            </div>
-          </button>`).join('')}
-    </div>`).join('');
+  // ─── 列表视图：逐行形式（#tasks-board）───────────────────────────────────
+  board.innerHTML = `<div class="task-list-view">${
+    activeTasks.length === 0
+      ? '<div class="muted" style="padding:16px 0;text-align:center">暂无任务</div>'
+      : activeTasks.map((task, index) => `
+          <button class="task-row" data-task-id="${escapeHtml(task.id)}">
+            <span class="task-row-num">#${index + 1}</span>
+            <span class="task-row-title" title="${escapeHtml(task.name)}">${escapeHtml(task.name)}</span>
+            ${taskStatusBadge(task.status)}
+            <span class="task-row-role role-chip">${escapeHtml(roleShortName(task.role))}</span>
+            <span class="task-row-date">📅 ${escapeHtml(task.date || '—')}</span>
+          </button>`).join('')
+  }</div>`;
 
-  if (countEl) countEl.textContent = `共 ${STATIC_TASKS.length} 个任务`;
+  if (countEl) countEl.textContent = `共 ${activeTasks.length} 个任务`;
 
-  // 更新看板视图
+  // ─── 看板视图（#tasks-board-view）保持三列形态 ───────────────────────────
   if (boardView) {
     const pendingLane = boardView.querySelector('#lane-pending');
     const activeLane = boardView.querySelector('#lane-active');
@@ -1885,12 +1991,18 @@ function renderTasks() {
     }
   }
 
-  // Re-bind task click events (both views)
-  board.querySelectorAll('[data-task-id]').forEach((btn) => {
+  // Re-bind task click events (list rows + board view)
+  const allTaskButtons = [
+    ...board.querySelectorAll('[data-task-id]'),
+    ...(boardView ? boardView.querySelectorAll('[data-task-id]') : []),
+  ];
+  allTaskButtons.forEach((btn) => {
+    // avoid double-binding on board view (already bound above)
+    if (btn.closest('#tasks-board-view') && btn.dataset.boundDetail) return;
+    if (btn.closest('#tasks-board-view')) btn.dataset.boundDetail = 'true';
     btn.addEventListener('click', () => {
       const taskId = btn.dataset.taskId;
       if (state.selectedTaskId === taskId) {
-        // toggle off
         state.selectedTaskId = null;
         const panel = document.querySelector('#task-detail-panel');
         if (panel) panel.style.display = 'none';
@@ -1903,7 +2015,8 @@ function renderTasks() {
 }
 
 function renderTaskDetail(taskId) {
-  const task = STATIC_TASKS.find((t) => t.id === taskId);
+  const taskSource = tasksState.data || STATIC_TASKS;
+  const task = taskSource.find((t) => t.id === taskId);
   const panel = document.querySelector('#task-detail-panel');
   const title = document.querySelector('#task-detail-title');
   const content = document.querySelector('#task-detail-content');
@@ -1995,8 +2108,9 @@ async function changeTaskStatus(taskId, newStatus) {
       body: JSON.stringify({ status: newStatus }),
     });
     if (res.ok) {
-      // Update local state
-      const task = STATIC_TASKS.find((t) => t.id === taskId);
+      // Update local state (API data or static fallback)
+      const taskSource = tasksState.data || STATIC_TASKS;
+      const task = taskSource.find((t) => t.id === taskId);
       if (task) task.status = newStatus;
       showToast({ type: 'success', message: `任务状态已更新为"${newStatus === 'active' ? '进行中' : newStatus === 'done' ? '已完成' : '阻塞中'}"` });
       renderTasks();
@@ -3251,7 +3365,7 @@ async function loadRouteData(route) {
       await Promise.all([loadConfigOverview(), loadSettings(), loadCron(), loadWiringStatus()]);
       break;
     case 'tasks':
-      renderTasks();
+      await loadTasks();
       break;
     case 'docs':
       await loadDocs();
@@ -3615,6 +3729,149 @@ function updateInspectorSidebar() {
       queueValue.textContent = '✅ 无待处理';
       queueValue.style.color = 'var(--color-success)';
     }
+  }
+}
+
+// ─── P1-5: Overview ReadinessScore & Agent Summary ───────────────────────────
+
+/**
+ * 计算系统就绪度评分（0-100）
+ * 评估维度：Gateway连通、活跃Agent、无阻塞任务、无待处理、无告警
+ */
+function computeReadinessScore() {
+  const { gatewayConnected, activeAgents, blockedTasks, queueCount } = state.kpiSummary;
+  const gatewayOk = gatewayConnected || (state.health?.data?.gateway?.status === 'ok');
+  const hasAgents = activeAgents > 0;
+  const noBlocked = blockedTasks === 0;
+  const noQueue   = queueCount === 0;
+  const noAlerts  = !(state.dashboard?.data?.alerts?.length > 0);
+
+  const checks = [
+    { name: 'Gateway 连接', ok: gatewayOk, pts: 30 },
+    { name: '活跃 Agent',   ok: hasAgents, pts: 25 },
+    { name: '无阻塞任务',   ok: noBlocked, pts: 20 },
+    { name: '无待处理',     ok: noQueue,   pts: 15 },
+    { name: '无告警',       ok: noAlerts,  pts: 10 },
+  ];
+  const score = checks.reduce((sum, c) => c.ok ? sum + c.pts : sum, 0);
+  const label = score >= 90 ? '健康' : score >= 70 ? '良好' : score >= 50 ? '需关注' : '异常';
+  const color = score >= 90 ? '#22c55e' : score >= 70 ? '#4f9cf4' : score >= 50 ? '#f97316' : '#ef4444';
+  return { score, label, color, checks };
+}
+
+/** 渲染 ReadinessScore 宽卡（SVG 环形进度 + 检查项标签） */
+function renderOverviewReadiness() {
+  const { score, label, color, checks } = computeReadinessScore();
+  const r = 32, circ = (2 * Math.PI * r).toFixed(2);
+  const arc  = (score / 100 * 2 * Math.PI * r).toFixed(2);
+  return `
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);
+                padding:var(--space-md) var(--space-lg);display:flex;align-items:center;
+                gap:var(--space-lg);margin-bottom:var(--space-lg);flex-wrap:wrap">
+      <div style="position:relative;width:80px;height:80px;flex-shrink:0">
+        <svg width="80" height="80" viewBox="0 0 80 80" style="transform:rotate(-90deg)">
+          <circle cx="40" cy="40" r="${r}" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <circle cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="6"
+            stroke-dasharray="${arc} ${circ}" stroke-linecap="round"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font-size:20px;font-weight:700;color:${color};line-height:1">${score}</span>
+          <span style="font-size:9px;color:var(--muted)">/100</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;color:var(--text);margin-bottom:6px">
+          系统就绪度 <span style="color:${color}">${label}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          ${checks.map(c => `
+            <span style="font-size:11px;padding:2px 7px;border-radius:20px;
+              background:${c.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};
+              border:1px solid ${c.ok ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'};
+              color:${c.ok ? '#22c55e' : '#ef4444'}">
+              ${c.ok ? '✓' : '✗'} ${escapeHtml(c.name)}
+            </span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+/** 渲染 Agent 状态速览（Mini 卡片网格，CC 风格） */
+function renderOverviewAgentSummary() {
+  const items = state.agentsData?.data?.items || [];
+  if (!items.length) return '';
+  const shown = items.slice(0, 8);
+  const dotMap = {
+    working:'#22c55e', active:'#22c55e',
+    idle:'#94a3b8',    normal:'#94a3b8',
+    blocked:'#ef4444', error:'#ef4444',
+    warning:'#f97316', backlog:'#f97316',
+    offline:'#64748b'
+  };
+  const labelMap = {
+    working:'工作中', active:'工作中',
+    idle:'空闲',      normal:'空闲',
+    blocked:'阻塞',   error:'异常',
+    warning:'警告',   offline:'离线',
+    backlog:'积压'
+  };
+  return `
+    <div style="margin-bottom:var(--space-lg)">
+      <div style="font-size:var(--text-xs);font-weight:700;color:var(--muted);
+                  text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
+        Agent 状态速览
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
+        ${shown.map(agent => {
+          const agentId = agent.id || agent.name || '';
+          const status  = agent.statusDetail?.status || agent.status || 'idle';
+          const emoji   = getAgentEmoji(agentId);
+          const name    = (AGENT_CHINESE_NAMES[agentId] || agent.name || agentId).replace(/（.*）$/, '');
+          const dot     = dotMap[status] || '#94a3b8';
+          const lbl     = labelMap[status] || status;
+          return `
+            <div style="background:var(--panel-alt);border:1px solid var(--border);
+                        border-radius:var(--radius-md);padding:8px 10px;
+                        display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px">${emoji}</span>
+              <div style="flex:1;overflow:hidden">
+                <div style="font-size:12px;font-weight:600;color:var(--text);
+                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${escapeHtml(name)}
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+                  <span style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0"></span>
+                  <span style="font-size:10px;color:var(--muted)">${lbl}</span>
+                </div>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+/** P1-5: 将 ReadinessScore + Agent Summary 注入 Overview 页面 */
+function updateOverviewExtras() {
+  // 1. ReadinessScore — 插入到 KPI Grid 后面
+  let readinessEl = document.getElementById('overview-readiness');
+  if (!readinessEl) {
+    readinessEl = document.createElement('div');
+    readinessEl.id = 'overview-readiness';
+    const kpiGrid = document.getElementById('overview-kpi-grid');
+    if (kpiGrid) kpiGrid.insertAdjacentElement('afterend', readinessEl);
+  }
+  if (readinessEl) readinessEl.innerHTML = renderOverviewReadiness();
+
+  // 2. Agent Summary — 插入到 dashboard-state 后面
+  let agentSummaryEl = document.getElementById('overview-agent-summary');
+  if (!agentSummaryEl) {
+    agentSummaryEl = document.createElement('div');
+    agentSummaryEl.id = 'overview-agent-summary';
+    const dashState = document.getElementById('dashboard-state');
+    if (dashState) dashState.insertAdjacentElement('afterend', agentSummaryEl);
+  }
+  if (agentSummaryEl && (state.agentsData?.data?.items?.length || 0) > 0) {
+    agentSummaryEl.innerHTML = renderOverviewAgentSummary();
   }
 }
 

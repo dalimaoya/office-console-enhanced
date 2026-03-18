@@ -8,11 +8,11 @@ import { getEvents, getEventsStatus } from '../controllers/events-controller.js'
 import { securityMiddleware } from '../middleware/security.js';
 import { getTasks, updateTaskStatus, createTask } from '../controllers/tasks-controller.js';
 import { getDocs } from '../controllers/docs-controller.js';
-import { getCollaboration, getSessions, getSessionById, getMessages } from '../controllers/collaboration-controller.js';
-import { getUsage, byAgent, contextPressure } from '../controllers/usage-controller.js';
+import { getCollaboration, getSessions, getSessionById, getMessages, getCollaborationGraphHandler } from '../controllers/collaboration-controller.js';
+import { getUsage, byAgent, byModel, contextPressure } from '../controllers/usage-controller.js';
 import { searchAll } from '../controllers/search-controller.js';
-import { getMemory } from '../controllers/memory-controller.js';
-import { getSettings, wiringStatus } from '../controllers/settings-controller.js';
+import { getMemory, getMemoryHealthHandler } from '../controllers/memory-controller.js';
+import { getSettings, wiringStatus, connectionHealth, securitySummary, updateStatus } from '../controllers/settings-controller.js';
 import { getActionQueueHandler, ackItem } from '../controllers/action-queue-controller.js';
 import { getCronHandler } from '../controllers/cron-controller.js';
 
@@ -26,6 +26,7 @@ apiRouter.use(...securityMiddleware);
 
 // 只读端点（GET）
 apiRouter.get('/dashboard', getDashboard);
+apiRouter.get('/overview', getDashboard); // 别名，与 /dashboard 返回相同数据
 apiRouter.get('/agents', getAgents);
 apiRouter.get('/config/templates', getTemplates);
 apiRouter.get('/config/templates/:id', getTemplate);
@@ -53,6 +54,9 @@ apiRouter.get('/docs', getDocs);
 
 // Iter-5 新增：Collaboration / Usage / Memory（只读）
 apiRouter.get('/collaboration', getCollaboration);
+
+// P1 CC借鉴：协作流向图
+apiRouter.get('/collaboration/graph', getCollaborationGraphHandler);
 apiRouter.get('/usage', getUsage);
 apiRouter.get('/memory', getMemory);
 
@@ -71,12 +75,23 @@ apiRouter.get('/cron', getCronHandler);
 // Iter-2 新增：接线状态诊断
 apiRouter.get('/settings/wiring-status', wiringStatus);
 
+// P1 CC借鉴：Settings 运维卡片
+apiRouter.get('/settings/connection-health', connectionHealth);
+apiRouter.get('/settings/security-summary', securitySummary);
+apiRouter.get('/settings/update-status', updateStatus);
+
 // P0 新增：全站搜索
 apiRouter.get('/search', searchAll);
 
 // P0 新增：成本感知
 apiRouter.get('/usage/by-agent', byAgent);
 apiRouter.get('/usage/context-pressure', contextPressure);
+
+// CC 借鉴 P0-4：Memory 健康状态评估
+apiRouter.get('/memory/health', getMemoryHealthHandler);
+
+// CC 借鉴 P0-5：按 Model 维度用量汇总
+apiRouter.get('/usage/by-model', byModel);
 
 // Iter-3 新增：Session Gateway 深度集成
 apiRouter.get('/sessions', getSessions);

@@ -34,6 +34,14 @@ function getContextWindow(model?: string): number {
   return MODEL_CONTEXT_WINDOWS.default;
 }
 
+// CC 借鉴 P0-5：Model 维度用量细分
+export interface ModelUsageStat {
+  tokenIn: number;
+  tokenOut: number;
+  totalToken: number;
+  costEstimateUSD: number;
+}
+
 export interface AgentUsageDetail {
   agentId: string;
   displayName: string;
@@ -44,6 +52,7 @@ export interface AgentUsageDetail {
   costEstimateUSD: number;
   sessionCount: number;
   estimated: boolean;
+  modelBreakdown: Record<string, ModelUsageStat>;
 }
 
 export interface ContextPressureItem {
@@ -74,6 +83,7 @@ async function readAgentSessionData(
   sessionCount: number;
   estimated: boolean;
   recentSessionSizeTokens: number;
+  modelBreakdown: Record<string, ModelUsageStat>;
 }> {
   const sessionsDir = join(AGENTS_DIR, agentId, 'sessions');
   let tokenIn = 0;
@@ -83,6 +93,7 @@ async function readAgentSessionData(
   let sessionCount = 0;
   let estimated = false;
   let recentSessionSizeTokens = 0;
+  const modelBreakdown: Record<string, ModelUsageStat> = {};
 
   try {
     const files = await readdir(sessionsDir).catch(() => [] as string[]);
@@ -115,16 +126,36 @@ async function readAgentSessionData(
 
             if (entry.type === 'message' && entry.message?.usage) {
               const usage = entry.message.usage;
+              const entryModel: string = entry.message?.model ?? entry.model ?? 'unknown';
               if (usage.inputTokens !== undefined || usage.outputTokens !== undefined) {
-                tokenIn += usage.inputTokens ?? 0;
-                tokenOut += usage.outputTokens ?? 0;
-                totalToken += usage.totalTokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
-                costEstimateUSD += usage.cost?.total ?? 0;
+                const tIn = usage.inputTokens ?? 0;
+                const tOut = usage.outputTokens ?? 0;
+                const tTotal = usage.totalTokens ?? tIn + tOut;
+                const cost = usage.cost?.total ?? 0;
+                tokenIn += tIn;
+                tokenOut += tOut;
+                totalToken += tTotal;
+                costEstimateUSD += cost;
                 fileHasExactTokens = true;
+                // Track model breakdown
+                if (!modelBreakdown[entryModel]) {
+                  modelBreakdown[entryModel] = { tokenIn: 0, tokenOut: 0, totalToken: 0, costEstimateUSD: 0 };
+                }
+                modelBreakdown[entryModel].tokenIn += tIn;
+                modelBreakdown[entryModel].tokenOut += tOut;
+                modelBreakdown[entryModel].totalToken += tTotal;
+                modelBreakdown[entryModel].costEstimateUSD += cost;
               } else if (usage.totalTokens) {
-                totalToken += usage.totalTokens;
-                costEstimateUSD += usage.cost?.total ?? 0;
+                const tTotal = usage.totalTokens;
+                const cost = usage.cost?.total ?? 0;
+                totalToken += tTotal;
+                costEstimateUSD += cost;
                 fileHasExactTokens = true;
+                if (!modelBreakdown[entryModel]) {
+                  modelBreakdown[entryModel] = { tokenIn: 0, tokenOut: 0, totalToken: 0, costEstimateUSD: 0 };
+                }
+                modelBreakdown[entryModel].totalToken += tTotal;
+                modelBreakdown[entryModel].costEstimateUSD += cost;
               }
             }
           } catch {
@@ -160,6 +191,11 @@ async function readAgentSessionData(
     // agent sessions dir not accessible
   }
 
+  // Round modelBreakdown costs
+  for (const key of Object.keys(modelBreakdown)) {
+    modelBreakdown[key].costEstimateUSD = Number(modelBreakdown[key].costEstimateUSD.toFixed(6));
+  }
+
   return {
     tokenIn,
     tokenOut,
@@ -168,6 +204,7 @@ async function readAgentSessionData(
     sessionCount,
     estimated,
     recentSessionSizeTokens,
+    modelBreakdown,
   };
 }
 
@@ -197,6 +234,7 @@ export async function getUsageByAgent(period = 'today'): Promise<{
         costEstimateUSD: sessionData.costEstimateUSD,
         sessionCount: sessionData.sessionCount,
         estimated: sessionData.estimated,
+        modelBreakdown: sessionData.modelBreakdown,
       });
     })
   );
@@ -209,6 +247,47 @@ export async function getUsageByAgent(period = 'today'): Promise<{
     period,
     generatedAt: new Date().toISOString(),
   };
+}
+
+// CC 借鉴 P0-5：按 model 维度汇总用量
+export interface ModelUsageAggregated extends ModelUsageStat {
+  model: string;
+  agentCount: number;
+}
+
+export async function getUsageByModel(period = 'today'): Promise<{
+  data: ModelUsageAggregated[];
+  period: string;
+  generatedAt: string;
+}> {
+  const fileReader = getFileReader();
+  const agentConfigs = await fileReader.listAgentConfigs().catch(() => []);
+
+  const modelMap: Record<string, ModelUsageAggregated> = {};
+
+  await Promise.all(
+    agentConfigs.map(async (agent) => {
+      const sessionData = await readAgentSessionData(agent.id, period);
+      for (const [modelName, stats] of Object.entries(sessionData.modelBreakdown)) {
+        if (!modelMap[modelName]) {
+          modelMap[modelName] = { model: modelName, tokenIn: 0, tokenOut: 0, totalToken: 0, costEstimateUSD: 0, agentCount: 0 };
+        }
+        modelMap[modelName].tokenIn += stats.tokenIn;
+        modelMap[modelName].tokenOut += stats.tokenOut;
+        modelMap[modelName].totalToken += stats.totalToken;
+        modelMap[modelName].costEstimateUSD += stats.costEstimateUSD;
+        modelMap[modelName].agentCount += 1;
+      }
+    })
+  );
+
+  // Round costs and sort by total tokens desc
+  const data = Object.values(modelMap).map((item) => ({
+    ...item,
+    costEstimateUSD: Number(item.costEstimateUSD.toFixed(6)),
+  })).sort((a, b) => b.totalToken - a.totalToken);
+
+  return { data, period, generatedAt: new Date().toISOString() };
 }
 
 export async function getContextPressure(): Promise<{

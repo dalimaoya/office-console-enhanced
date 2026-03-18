@@ -38,6 +38,27 @@ export type AgentSummary = {
   statusDetail?: AgentStatusDetail;
 };
 
+// CC 借鉴 P0-1：ReadinessScore 综合评分
+export type ReadinessCheckItemStatus = 'pass' | 'warn' | 'fail';
+
+export type ReadinessCheckItem = {
+  check: string;
+  status: ReadinessCheckItemStatus;
+  detail?: string;
+};
+
+export type ReadinessDimension = {
+  name: string;
+  score: number;
+  items: ReadinessCheckItem[];
+};
+
+export type ReadinessScore = {
+  overall: number;
+  dimensions: ReadinessDimension[];
+  computedAt: string;
+};
+
 export type DashboardPayload = {
   system: {
     status: 'normal' | 'warning' | 'error' | 'unknown';
@@ -64,6 +85,11 @@ export type DashboardPayload = {
       lastUpdated: string;
     }>;
   };
+  usage: {
+    todayTokens: number;
+    todayCost: number;
+    period: string;
+  };
   alerts: Array<{
     level: 'warning' | 'error';
     type: 'agent_health' | 'task_failure' | 'system_performance';
@@ -71,6 +97,7 @@ export type DashboardPayload = {
     suggestion: string;
     timestamp: string;
   }>;
+  readinessScore?: ReadinessScore;
 };
 
 export type HealthPayload = {

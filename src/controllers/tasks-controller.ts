@@ -11,12 +11,41 @@ import { sendSuccess, sendError } from '../utils/responses.js';
 
 const TASKS_DIR = '/root/.openclaw/workspace/projects/office-console-enhanced/tasks';
 
+// CC 借鉴 P0-3：DoneChecklist 解析
+export interface ChecklistItem {
+  item: string;
+  done: boolean;
+}
+
+export function parseChecklist(content: string): { checklist: ChecklistItem[]; checklistProgress: number | null } {
+  const lines = content.split('\n');
+  const checklist: ChecklistItem[] = [];
+
+  for (const line of lines) {
+    const doneMatch = line.match(/^\s*-\s*\[x\]\s+(.+)/i);
+    const todoMatch = line.match(/^\s*-\s*\[\s\]\s+(.+)/i);
+    if (doneMatch) {
+      checklist.push({ item: doneMatch[1].trim(), done: true });
+    } else if (todoMatch) {
+      checklist.push({ item: todoMatch[1].trim(), done: false });
+    }
+  }
+
+  const checklistProgress = checklist.length > 0
+    ? Math.round((checklist.filter((c) => c.done).length / checklist.length) * 100)
+    : null;
+
+  return { checklist, checklistProgress };
+}
+
 interface TaskItem {
   name: string;
   filename: string;
   mtime: string;
   size: number;
   status: 'active' | 'blocked';
+  checklist?: ChecklistItem[];
+  checklistProgress?: number | null;
 }
 
 function inferStatus(filename: string): 'active' | 'blocked' {
@@ -49,13 +78,26 @@ export async function getTasks(req: Request, res: Response, next: NextFunction) 
     for (const filename of files) {
       const filePath = join(TASKS_DIR, filename);
       try {
-        const s = await stat(filePath);
+        const [s, content] = await Promise.all([
+          stat(filePath),
+          readFile(filePath, 'utf-8').catch(() => ''),
+        ]);
+        const { checklist, checklistProgress } = parseChecklist(content);
+        // Infer status from file content (- 状态: done/blocked/etc)
+        let fileStatus: 'active' | 'blocked' = inferStatus(filename);
+        const statusMatch = content.match(/^[-*]\s*(?:状态|status)[：:]\s*(.+)/im);
+        if (statusMatch) {
+          const s2 = statusMatch[1].trim().toLowerCase();
+          if (s2 === 'blocked') fileStatus = 'blocked';
+        }
         items.push({
           name: filenameToName(filename),
           filename,
           mtime: s.mtime.toISOString(),
           size: s.size,
-          status: inferStatus(filename),
+          status: fileStatus,
+          checklist,
+          checklistProgress,
         });
       } catch {
         // skip unreadable files

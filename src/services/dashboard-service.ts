@@ -1,29 +1,87 @@
 import { performance } from 'node:perf_hooks';
+import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { openclawCliAdapter } from '../adapters/openclaw-cli-adapter.js';
 import type { AgentSummary, DashboardPayload } from '../types/domain.js';
 import { agentService } from './agent-service.js';
+import { computeReadinessScore } from './readiness-service.js';
+
+const AGENTS_DIR = '/root/.openclaw/agents';
+// 单次 Gateway 调用最大等待时间（毫秒）
+const GATEWAY_CALL_TIMEOUT_MS = 800;
+
+/** 为 Promise 添加超时，超时返回 fallback */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+/** 读取今日所有 agent 的 token 用量（直接读取 JSONL，无 CLI 开销） */
+async function readTodayUsage(): Promise<{ todayTokens: number; todayCost: number }> {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  let todayTokens = 0;
+  let todayCost = 0;
+
+  try {
+    const agentDirs = await readdir(AGENTS_DIR);
+    await Promise.all(
+      agentDirs.map(async (agentId) => {
+        const sessionsDir = join(AGENTS_DIR, agentId, 'sessions');
+        try {
+          const files = await readdir(sessionsDir);
+          const jsonlFiles = files.filter((f) => f.endsWith('.jsonl') && !f.includes('.deleted') && !f.includes('.reset'));
+          await Promise.all(
+            jsonlFiles.map(async (file) => {
+              try {
+                const raw = await readFile(join(sessionsDir, file), 'utf-8');
+                for (const line of raw.split('\n')) {
+                  if (!line) continue;
+                  try {
+                    const entry = JSON.parse(line);
+                    if (entry.type === 'message' && entry.message?.usage) {
+                      const ts = entry.timestamp ? new Date(entry.timestamp) : null;
+                      if (ts && ts < cutoff) continue;
+                      todayTokens += entry.message.usage.totalTokens || 0;
+                      todayCost += entry.message.usage.cost?.total || 0;
+                    }
+                  } catch { /* skip malformed lines */ }
+                }
+              } catch { /* skip unreadable files */ }
+            })
+          );
+        } catch { /* skip agents without sessions dir */ }
+      })
+    );
+  } catch { /* skip if agents dir not accessible */ }
+
+  return { todayTokens, todayCost: Number(todayCost.toFixed(6)) };
+}
 
 export class DashboardService {
   async getDashboard(): Promise<DashboardPayload> {
     const sourceDurationsMs: Record<string, number> = {};
-    const timed = async <T>(name: string, fn: () => Promise<T>) => {
+    const timed = async <T>(name: string, fn: () => Promise<T>, fallback: T) => {
       const started = performance.now();
-      const value = await fn();
+      const value = await withTimeout(fn(), GATEWAY_CALL_TIMEOUT_MS, fallback);
       sourceDurationsMs[name] = Math.round(performance.now() - started);
       return value;
     };
 
-    const [health, status, agents, config] = await Promise.all([
-      timed('health', () => openclawCliAdapter.healthCheck()),
-      timed('status', () => openclawCliAdapter.gatewayCall<any>('status')),
-      timed('agents', () => agentService.listAgents()),
-      timed('config', () => openclawCliAdapter.gatewayCall<any>('config.get')),
+    const [health, status, agents, config, todayUsage, readinessScore] = await Promise.all([
+      timed('health', () => openclawCliAdapter.healthCheck(), { ok: false }),
+      timed('status', () => openclawCliAdapter.gatewayCall<any>('status'), null),
+      timed('agents', () => agentService.listAgents(), [] as AgentSummary[]),
+      timed('config', () => openclawCliAdapter.gatewayCall<any>('config.get'), null),
+      readTodayUsage(),
+      computeReadinessScore().catch(() => undefined),
     ]);
 
-    return this.mapDashboard({ health, status, agents, config, sourceDurationsMs });
+    return this.mapDashboard({ health, status, agents, config, sourceDurationsMs, todayUsage, readinessScore });
   }
 
-  private mapDashboard(input: { health: { ok?: boolean }; status: any; agents: AgentSummary[]; config: any; sourceDurationsMs: Record<string, number> }): DashboardPayload {
+  private mapDashboard(input: { health: { ok?: boolean }; status: any; agents: AgentSummary[]; config: any; sourceDurationsMs: Record<string, number>; todayUsage: { todayTokens: number; todayCost: number }; readinessScore?: any }): DashboardPayload {
     const statusBreakdown: DashboardPayload['agents']['statusBreakdown'] = { working: 0, idle: 0, blocked: 0, backlog: 0, error: 0, offline: 0, unknown: 0 };
     for (const item of input.agents) {
       if (statusBreakdown[item.status] !== undefined) statusBreakdown[item.status] += 1;
@@ -58,7 +116,13 @@ export class DashboardService {
         activeCount: workspaces.filter((item) => item.status === 'active').length,
         recentActivity: workspaces,
       },
+      usage: {
+        todayTokens: input.todayUsage.todayTokens,
+        todayCost: input.todayUsage.todayCost,
+        period: 'today',
+      },
       alerts,
+      ...(input.readinessScore ? { readinessScore: input.readinessScore } : {}),
     };
   }
 

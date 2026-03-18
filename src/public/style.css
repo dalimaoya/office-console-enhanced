@@ -1,7 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
-   办公增强控制台 — Design System v2.0 (Lux Redesign 2026-03-19)
+   办公增强控制台 — Design System v2.1 (Lux Redesign + P1 CC Token 扩展)
    Theme: Professional Dark  |  Author: ui-lux
+   Updated: 2026-03-19  |  P1: 7色语义系统 + CC Token 对齐
    ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 0. Token 系统导入（P1 CC 借鉴扩展） ──────────────────────────────────── */
+/* tokens.css 提供:
+   - 7 色语义调色板 (green/yellow/orange/red/gray/blue/violet)
+   - CC 兼容 --color-* 命名约定
+   - 卡片/徽章/切换组件规范 Token
+   - 三栏布局规范 Token
+   - 完整 radii/spacing/shadows/motion 系统
+   加载顺序: tokens.css → style.css (style.css 中 :root 可覆盖) */
 
 /* ── 1. Design Tokens ──────────────────────────────────────────────────────── */
 :root {
@@ -2093,3 +2103,368 @@ select:focus { outline: none; border-color: rgba(91,150,255,0.5); }
 .segment-switch__btn { padding: 4px 14px; border-radius: 6px; font-size: var(--text-sm); font-weight: 500; color: var(--muted); cursor: pointer; border: none; background: transparent; transition: all var(--dur-fast) ease; white-space: nowrap; }
 .segment-switch__btn--active { background: var(--panel-alt); color: var(--text); box-shadow: var(--shadow-sm); }
 .inspector-sidebar--open { width: var(--inspector-w); min-width: var(--inspector-w); padding: var(--space-md); overflow-y: auto; }
+
+/* Tasks 看板 lane 内容区 */
+.board-lane-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 120px;
+  padding: var(--space-2) 0;
+}
+
+/* ─── Task List View (行列表) ─────────────────────────────────────────────────── */
+.task-list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 10px);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+  font-size: var(--text-sm, 13px);
+}
+.task-row:hover { border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.04); }
+.task-row-num  { font-size: 11px; color: var(--dim); min-width: 28px; font-variant-numeric: tabular-nums; }
+.task-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.task-row-role  { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.task-row-date  { font-size: 11px; color: var(--dim); white-space: nowrap; min-width: 80px; text-align: right; }
+
+/* ─── Skeleton loading ────────────────────────────────────────────────────────── */
+.skeleton-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 12px; margin-bottom: 16px; }
+.skeleton-kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.skeleton-line { background: linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.10) 40%,rgba(255,255,255,0.04) 80%); background-size:600px 100%; animation: shimmer 1.6s infinite; border-radius: 6px; }
+.skeleton-agent-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 12px; }
+.skeleton-agent-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.skeleton-task-list  { display: flex; flex-direction: column; gap: 4px; }
+.skeleton-task-row   { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg,10px); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+
+/* ════════════════════════════════════════════════════════════════════════════════
+   P1 CC 借鉴扩展 — 设计规范补充 (ui-lux, 2026-03-19)
+   7 色语义系统 / 组件规范 / 三栏布局对齐
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── CC-43. 7 色语义徽章（使用 tokens.css semantic 色系）─────────────────── */
+/* 覆盖 section 14 的徽章，使颜色与 7 色语义系统一致 */
+
+.badge--green,  .badge.sem-success {
+  color: var(--semantic-success-text);
+  border-color: var(--semantic-success-border);
+  background: var(--semantic-success-dim);
+}
+.badge--yellow, .badge.sem-warning {
+  color: var(--semantic-warning-text);
+  border-color: var(--semantic-warning-border);
+  background: var(--semantic-warning-dim);
+}
+.badge--orange, .badge.sem-attention {
+  color: var(--semantic-attention-text);
+  border-color: var(--semantic-attention-border);
+  background: var(--semantic-attention-dim);
+}
+.badge--red,    .badge.sem-error {
+  color: var(--semantic-error-text);
+  border-color: var(--semantic-error-border);
+  background: var(--semantic-error-dim);
+}
+.badge--gray,   .badge.sem-neutral {
+  color: var(--semantic-neutral-text);
+  border-color: var(--semantic-neutral-border);
+  background: var(--semantic-neutral-dim);
+}
+.badge--blue,   .badge.sem-info {
+  color: var(--semantic-info-text);
+  border-color: var(--semantic-info-border);
+  background: var(--semantic-info-dim);
+}
+.badge--violet, .badge.sem-brand {
+  color: var(--semantic-brand-text);
+  border-color: var(--semantic-brand-border);
+  background: var(--semantic-brand-dim);
+}
+
+/* ─── CC-44. 状态色条 / 左侧标注线（kpi-card accent bar 扩展）──────────────── */
+
+/* 信息蓝 */
+.kpi-card.tone-info::before {
+  background: linear-gradient(90deg,
+    rgba(59,130,246,0.75),
+    rgba(59,130,246,0.2));
+}
+/* 紫色品牌 */
+.kpi-card.tone-brand::before {
+  background: linear-gradient(90deg,
+    rgba(139,92,246,0.75),
+    rgba(139,92,246,0.2));
+}
+/* 橙色注意 */
+.kpi-card.tone-attention::before {
+  background: linear-gradient(90deg,
+    rgba(249,115,22,0.8),
+    rgba(249,115,22,0.2));
+}
+
+/* 系统健康横幅扩展 */
+.system-health-banner.health-unknown {
+  border-left: 4px solid var(--semantic-neutral);
+}
+.system-health-banner.health-degraded {
+  border-left: 4px solid var(--semantic-attention);
+}
+
+/* ─── CC-45. 组件规范：Segment Switch（使用 Token 变量）────────────────────── */
+/* 对齐 tokens.css --segment-* 规范 */
+
+.segment-switch {
+  display: inline-flex;
+  background: var(--segment-bg, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border);
+  border-radius: var(--segment-radius, var(--radius-md));
+  padding: 3px;
+  gap: 2px;
+}
+
+.segment-item,
+.segment-switch__btn {
+  padding: var(--segment-pad-y, 5px) var(--segment-pad-x, 14px);
+  border-radius: 6px;
+  font-size: var(--segment-font-size, var(--text-sm));
+  font-weight: var(--segment-font-weight, var(--font-medium));
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.segment-item.active,
+.segment-switch__btn--active {
+  background: var(--segment-active-bg, var(--color-bg-panel-alt));
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.segment-item:hover:not(.active),
+.segment-switch__btn:hover:not(.segment-switch__btn--active) {
+  background: rgba(255,255,255,0.06);
+  color: var(--color-text-secondary);
+}
+
+/* ─── CC-46. 组件规范：Quick Chip（Filter Chip，使用 Token 变量）──────────── */
+
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--chip-pad-y, 4px) var(--chip-pad-x, 12px);
+  border-radius: var(--chip-radius, var(--radius-pill));
+  font-size: var(--chip-font-size, var(--text-sm));
+  font-weight: var(--chip-font-weight, var(--font-medium));
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.quick-chip:hover {
+  border-color: var(--color-info-border);
+  color: var(--color-info-fg);
+  background: var(--color-info-subtle);
+}
+
+.quick-chip.active {
+  background: var(--color-info);
+  border-color: var(--color-info);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-bold);
+}
+
+/* 7 色语义 Quick Chip 变体 */
+.quick-chip--success.active { background: var(--semantic-success);   border-color: var(--semantic-success);   color: #022c12; }
+.quick-chip--warning.active { background: var(--semantic-warning);   border-color: var(--semantic-warning);   color: #1a1200; }
+.quick-chip--danger.active  { background: var(--semantic-error);     border-color: var(--semantic-error);     color: #1a0000; }
+.quick-chip--brand.active   { background: var(--semantic-brand);     border-color: var(--semantic-brand);     color: #13003c; }
+
+/* ─── CC-47. 三栏布局规范（对齐 tokens.css --layout-* 变量）───────────────── */
+
+/* 主壳三栏：左 sidebar + 弹性 content + 右 inspector */
+.shell-3col {
+  display: grid;
+  grid-template-columns:
+    var(--layout-sidebar-w, 240px)
+    minmax(0, 1fr)
+    var(--layout-inspector-w, 256px);
+  min-height: 100vh;
+}
+
+/* 兼容旧 .shell class */
+.shell {
+  grid-template-columns:
+    var(--layout-sidebar-w, 240px)
+    minmax(0, 1fr)
+    var(--layout-inspector-w, 256px);
+}
+
+.shell.inspector-hidden,
+.shell-3col.inspector-hidden {
+  grid-template-columns:
+    var(--layout-sidebar-w, 240px)
+    minmax(0, 1fr);
+}
+
+/* ─── CC-48. 卡片规范扩展（使用 --card-* Token）────────────────────────────── */
+
+/* 紧凑卡片 */
+.card-sm {
+  background: var(--card, rgba(255,255,255,0.025));
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius-sm);
+  padding: var(--card-pad-sm);
+}
+
+/* 标准卡片 */
+.card-md {
+  background: var(--panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius-md);
+  padding: var(--card-pad-md);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.card-md:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* 宽松大卡片 */
+.card-lg {
+  background: var(--panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius-lg);
+  padding: var(--card-pad-lg);
+  box-shadow: var(--shadow-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.card-lg:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 卡片字号层级辅助类 */
+.card-title { font-size: var(--card-title-md); font-weight: var(--font-bold); color: var(--color-text-primary); }
+.card-body  { font-size: var(--card-body-text); color: var(--color-text-secondary); line-height: 1.55; }
+.card-meta  { font-size: var(--card-meta-text); color: var(--color-text-muted); }
+
+/* ─── CC-49. 7 色语义 Pill 扩展（对齐 palette tokens）─────────────────────── */
+
+.pill--green  { color: var(--semantic-success-text);   border-color: var(--semantic-success-border);   background: var(--semantic-success-dim); }
+.pill--yellow { color: var(--semantic-warning-text);   border-color: var(--semantic-warning-border);   background: var(--semantic-warning-dim); }
+.pill--orange { color: var(--semantic-attention-text); border-color: var(--semantic-attention-border); background: var(--semantic-attention-dim); }
+.pill--red    { color: var(--semantic-error-text);     border-color: var(--semantic-error-border);     background: var(--semantic-error-dim); }
+.pill--gray   { color: var(--semantic-neutral-text);   border-color: var(--semantic-neutral-border);   background: var(--semantic-neutral-dim); }
+.pill--blue   { color: var(--semantic-info-text);      border-color: var(--semantic-info-border);      background: var(--semantic-info-dim); }
+.pill--violet { color: var(--semantic-brand-text);     border-color: var(--semantic-brand-border);     background: var(--semantic-brand-dim); }
+
+/* ─── CC-50. 状态色点 / Dot indicator ──────────────────────────────────────── */
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot--success  { background: var(--semantic-success);   box-shadow: 0 0 0 2px var(--semantic-success-dim); }
+.status-dot--warning  { background: var(--semantic-warning);   box-shadow: 0 0 0 2px var(--semantic-warning-dim); }
+.status-dot--attention{ background: var(--semantic-attention); box-shadow: 0 0 0 2px var(--semantic-attention-dim); }
+.status-dot--error    { background: var(--semantic-error);     box-shadow: 0 0 0 2px var(--semantic-error-dim); }
+.status-dot--neutral  { background: var(--semantic-neutral);   box-shadow: 0 0 0 2px var(--semantic-neutral-dim); }
+.status-dot--info     { background: var(--semantic-info);      box-shadow: 0 0 0 2px var(--semantic-info-dim); }
+.status-dot--brand    { background: var(--semantic-brand);     box-shadow: 0 0 0 2px var(--semantic-brand-dim); }
+
+/* 脉动动效 */
+.status-dot--pulse {
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+
+/* ─── CC-51. 进度条（语义色系）────────────────────────────────────────────── */
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.progress-bar__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.5s var(--ease-out);
+}
+.progress-bar__fill--success  { background: linear-gradient(90deg, var(--semantic-success), var(--semantic-success-text)); }
+.progress-bar__fill--warning  { background: linear-gradient(90deg, var(--semantic-warning), var(--semantic-warning-text)); }
+.progress-bar__fill--danger   { background: linear-gradient(90deg, var(--semantic-error), var(--semantic-error-text)); }
+.progress-bar__fill--info     { background: linear-gradient(90deg, var(--semantic-info), var(--semantic-info-text)); }
+.progress-bar__fill--brand    { background: linear-gradient(90deg, var(--semantic-brand), var(--semantic-brand-text)); }
+
+/* ─── CC-52. 辅助间距类（对齐 spacing Token）──────────────────────────────── */
+
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+
+.gap-xs  { gap: var(--space-xs); }
+.gap-sm  { gap: var(--space-sm); }
+.gap-md  { gap: var(--space-md); }
+.gap-lg  { gap: var(--space-lg); }
+.gap-xl  { gap: var(--space-xl); }
+
+/* ─── CC-53. 响应式断点更新（对齐 --layout-* Token）────────────────────────── */
+
+@media (max-width: 1440px) {
+  :root { --layout-inspector-w: 220px; --inspector-w: 220px; }
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --layout-sidebar-w: 200px; --sidebar-w: 200px;
+    --layout-content-pad-x: 20px; --content-pad-x: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  :root { --layout-inspector-w: 0px; --inspector-w: 0px; }
+}
+

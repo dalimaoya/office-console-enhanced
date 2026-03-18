@@ -294,6 +294,100 @@ function normalizeStatus(s: string): SessionItem['status'] {
   return 'pending';
 }
 
+// ─── 协作图谱 ────────────────────────────────────────────────────────────────
+
+export interface GraphNode {
+  id: string;
+  agentId: string;
+  label: string;
+  type: 'agent' | 'session';
+  status: SessionItem['status'];
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: 'parent-child' | 'sessions_send';
+}
+
+export interface CollaborationGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  source: string;
+}
+
+/**
+ * getCollaborationGraph — 构建 agent 会话协作流向图
+ *
+ * 数据来源：listSessions（双源：Gateway 优先，文件降级）
+ * 逻辑：
+ *   - 每个 session 成为一个 node
+ *   - parentSessionId 存在 → 构建 parent-child edge
+ *   - sessions_send 事件通过 sessions 的跨 agentId 关系推断
+ */
+export async function getCollaborationGraph(): Promise<CollaborationGraph> {
+  const { data: sessions, source } = await listSessions();
+
+  const nodeMap = new Map<string, GraphNode>();
+  const edges: GraphEdge[] = [];
+
+  // 构建 nodes
+  for (const s of sessions) {
+    const label = `${s.agentId}#${s.id.slice(-6)}`;
+    nodeMap.set(s.id, {
+      id: s.id,
+      agentId: s.agentId,
+      label,
+      type: 'session',
+      status: s.status,
+    });
+  }
+
+  // 构建 parent-child edges（基于 parentSessionId）
+  for (const s of sessions) {
+    if (s.parentSessionId && nodeMap.has(s.parentSessionId)) {
+      edges.push({
+        source: s.parentSessionId,
+        target: s.id,
+        type: 'parent-child',
+      });
+    }
+  }
+
+  // 推断 sessions_send 边：同 agentId 下存在多 session 时，按时间顺序连接
+  const byAgent = new Map<string, SessionItem[]>();
+  for (const s of sessions) {
+    if (!byAgent.has(s.agentId)) byAgent.set(s.agentId, []);
+    byAgent.get(s.agentId)!.push(s);
+  }
+
+  for (const [, agentSessions] of byAgent) {
+    if (agentSessions.length < 2) continue;
+    const sorted = [...agentSessions].sort(
+      (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
+    );
+    for (let i = 0; i < sorted.length - 1; i++) {
+      // 仅在没有 parent-child 关系时才添加推断边，避免重复
+      const alreadyLinked = edges.some(
+        (e) => e.source === sorted[i].id && e.target === sorted[i + 1].id
+      );
+      if (!alreadyLinked) {
+        edges.push({
+          source: sorted[i].id,
+          target: sorted[i + 1].id,
+          type: 'sessions_send',
+        });
+      }
+    }
+  }
+
+  return {
+    nodes: Array.from(nodeMap.values()),
+    edges,
+    source,
+  };
+}
+
 // ─── 公开 API ─────────────────────────────────────────────────────────────────
 
 export async function listSessions(): Promise<{ data: SessionItem[]; source: string }> {

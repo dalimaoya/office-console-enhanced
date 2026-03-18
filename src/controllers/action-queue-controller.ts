@@ -9,14 +9,8 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { getActionQueue } from '../services/action-queue-service.js';
+import { getActionQueue, ackItem as ackItemService } from '../services/action-queue-service.js';
 import { sendSuccess, sendError } from '../utils/responses.js';
-
-const ACK_FILE = '/root/.openclaw/workspace/projects/office-console-enhanced/data/action-queue-acks.json';
-const ACK_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7天
 
 export async function getActionQueueHandler(
   _req: Request,
@@ -33,7 +27,8 @@ export async function getActionQueueHandler(
 
 /**
  * POST /api/v1/action-queue/:itemId/ack
- * 确认一条 action-queue 条目，7天内不重复提示
+ * 确认一条 action-queue 条目，支持自定义有效期（durationMinutes，默认60分钟）
+ * 确认后该条目从待处理列表中消失，过期后自动重现
  */
 export async function ackItem(
   req: Request,
@@ -47,40 +42,21 @@ export async function ackItem(
     }
 
     const itemId = req.params['itemId'] as string;
-    const { note } = req.body ?? {};
+    const durationMinutes = Number(req.body?.durationMinutes ?? 60);
 
     if (!itemId) {
       return sendError(res, 400, 'MISSING_ITEM_ID', 'itemId is required');
     }
 
-    // 读取现有 acks
-    let acks: Record<string, { acknowledged: boolean; ackedAt: string; note?: string; ackExpiresAt: string }> = {};
-    if (existsSync(ACK_FILE)) {
-      const raw = await readFile(ACK_FILE, 'utf-8');
-      acks = JSON.parse(raw);
-    } else {
-      await mkdir(dirname(ACK_FILE), { recursive: true });
+    if (isNaN(durationMinutes) || durationMinutes <= 0) {
+      return sendError(res, 400, 'INVALID_DURATION', 'durationMinutes must be a positive number');
     }
 
-    const now = new Date();
-    const ackedAt = now.toISOString();
-    const ackExpiresAt = new Date(now.getTime() + ACK_TTL_MS).toISOString();
-
-    acks[itemId] = {
-      acknowledged: true,
-      ackedAt,
-      ...(note ? { note } : {}),
-      ackExpiresAt,
-    };
-
-    await writeFile(ACK_FILE, JSON.stringify(acks, null, 2), 'utf-8');
+    const record = await ackItemService(itemId, durationMinutes);
 
     return sendSuccess(res, {
-      itemId,
       acknowledged: true,
-      ackedAt,
-      note: note ?? null,
-      ackExpiresAt,
+      expiresAt: record.expiresAt,
     });
   } catch (error) {
     next(error);

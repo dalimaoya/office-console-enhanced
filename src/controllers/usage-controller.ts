@@ -9,7 +9,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sendSuccess } from '../utils/responses.js';
-import { getUsageByAgent, getContextPressure } from '../services/usage-service.js';
+import { getUsageByAgent, getContextPressure, getUsageByModel } from '../services/usage-service.js';
 import { checkAndNotifyContextPressure } from '../services/notification-service.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
@@ -125,6 +125,18 @@ export async function byAgent(req: Request, res: Response, next: NextFunction) {
     const period = String(req.query.period || 'today');
     const validPeriod = ['today', 'week'].includes(period) ? period : 'today';
     const result = await getUsageByAgent(validPeriod);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// CC 借鉴 P0-5：按 Model 维度用量汇总
+export async function byModel(req: Request, res: Response, next: NextFunction) {
+  try {
+    const period = String(req.query.period || 'today');
+    const validPeriod = ['today', 'week'].includes(period) ? period : 'today';
+    const result = await getUsageByModel(validPeriod);
     return res.json({ success: true, ...result });
   } catch (error) {
     next(error);

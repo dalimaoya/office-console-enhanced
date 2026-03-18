@@ -9,6 +9,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, basename, resolve, normalize } from 'node:path';
 import { homedir } from 'node:os';
 import { sendSuccess, sendError } from '../utils/responses.js';
+import { getMemoryHealth } from '../services/memory-health-service.js';
 
 const HOME = homedir();
 const OPENCLAW_ROOT = join(HOME, '.openclaw');
@@ -69,6 +70,16 @@ function isPathSafe(filePath: string): boolean {
   const normalized = normalize(resolve(filePath));
   const allowed = normalize(resolve(OPENCLAW_ROOT));
   return normalized.startsWith(allowed);
+}
+
+// CC 借鉴 P0-4：Memory 健康状态评估
+export async function getMemoryHealthHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await getMemoryHealth();
+    return sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function getMemory(req: Request, res: Response, next: NextFunction) {

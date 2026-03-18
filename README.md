@@ -1,5 +1,24 @@
 # office-dashboard-adapter
 
+## 快速开始
+
+### 一键安装（Linux）
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/dalimaoya/office-console-enhanced/main/artifacts/office-dashboard-adapter/scripts/install.sh)
+```
+
+### 环境诊断
+```bash
+npm run diagnose
+```
+
+### 卸载
+```bash
+bash scripts/uninstall.sh
+```
+
+---
+
 办公控制台 MVP 适配层，提供：
 
 - `GET /api/v1/dashboard`

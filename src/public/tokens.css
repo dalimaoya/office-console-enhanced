@@ -1,0 +1,365 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   设计 Token 系统 v2 — P1 CC 借鉴扩展
+   Author: ui-lux  |  Updated: 2026-03-19
+   变更：新增 7 色语义系统 / CC 兼容 Token / 卡片规范 / 布局节奏 Token
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     1. 基础调色板（Tailwind 语义色值映射，来源: Jayce CC 对比分析）
+     对应 Tailwind: green-500 / yellow-500 / orange-500 / red-500 /
+                    gray-400  / blue-500  / violet-500
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* Green 系 */
+  --palette-green-300: #86efac;
+  --palette-green-400: #4ade80;
+  --palette-green-500: #22c55e;   /* Tailwind green-500 */
+  --palette-green-600: #16a34a;
+  --palette-green-700: #15803d;
+
+  /* Yellow 系 */
+  --palette-yellow-300: #fde047;
+  --palette-yellow-400: #facc15;
+  --palette-yellow-500: #eab308;  /* Tailwind yellow-500 */
+  --palette-yellow-600: #ca8a04;
+
+  /* Orange 系 */
+  --palette-orange-300: #fdba74;
+  --palette-orange-400: #fb923c;
+  --palette-orange-500: #f97316;  /* Tailwind orange-500 */
+  --palette-orange-600: #ea580c;
+
+  /* Red 系 */
+  --palette-red-300: #fca5a5;
+  --palette-red-400: #f87171;
+  --palette-red-500: #ef4444;     /* Tailwind red-500 */
+  --palette-red-600: #dc2626;
+
+  /* Gray 系 */
+  --palette-gray-300: #d1d5db;
+  --palette-gray-400: #9ca3af;    /* Tailwind gray-400 */
+  --palette-gray-500: #6b7280;
+  --palette-gray-600: #4b5563;
+  --palette-gray-700: #374151;
+
+  /* Blue 系 */
+  --palette-blue-300: #93c5fd;
+  --palette-blue-400: #60a5fa;
+  --palette-blue-500: #3b82f6;    /* Tailwind blue-500 */
+  --palette-blue-600: #2563eb;
+  --palette-blue-700: #1d4ed8;
+
+  /* Violet 系 */
+  --palette-violet-300: #c4b5fd;
+  --palette-violet-400: #a78bfa;
+  --palette-violet-500: #8b5cf6;  /* Tailwind violet-500 */
+  --palette-violet-600: #7c3aed;
+  --palette-violet-700: #6d28d9;
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     2. 7 色语义系统（CC 借鉴：语义角色 → 调色板映射）
+     用途: 状态、标签、徽章、进度条等所有语义化 UI 元素
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* ✅ 成功 / 正常 / 运行中 */
+  --semantic-success:        var(--palette-green-500);
+  --semantic-success-dim:    rgba(34,197,94,0.12);
+  --semantic-success-border: rgba(34,197,94,0.32);
+  --semantic-success-text:   #4ade80;
+
+  /* ⚠️ 警告 / 慢速 / 降级 */
+  --semantic-warning:        var(--palette-yellow-500);
+  --semantic-warning-dim:    rgba(234,179,8,0.12);
+  --semantic-warning-border: rgba(234,179,8,0.32);
+  --semantic-warning-text:   #facc15;
+
+  /* 🟠 注意 / 接近阈值 */
+  --semantic-attention:        var(--palette-orange-500);
+  --semantic-attention-dim:    rgba(249,115,22,0.12);
+  --semantic-attention-border: rgba(249,115,22,0.32);
+  --semantic-attention-text:   #fb923c;
+
+  /* ❌ 错误 / 失败 / 危险 */
+  --semantic-error:        var(--palette-red-500);
+  --semantic-error-dim:    rgba(239,68,68,0.12);
+  --semantic-error-border: rgba(239,68,68,0.32);
+  --semantic-error-text:   #f87171;
+
+  /* ⬜ 中性 / 离线 / 未激活 */
+  --semantic-neutral:        var(--palette-gray-400);
+  --semantic-neutral-dim:    rgba(156,163,175,0.10);
+  --semantic-neutral-border: rgba(156,163,175,0.28);
+  --semantic-neutral-text:   #9ca3af;
+
+  /* 🔵 信息 / 活跃 / 主要 */
+  --semantic-info:        var(--palette-blue-500);
+  --semantic-info-dim:    rgba(59,130,246,0.12);
+  --semantic-info-border: rgba(59,130,246,0.32);
+  --semantic-info-text:   #60a5fa;
+
+  /* 🟣 特殊 / 高亮 / 品牌拓展 */
+  --semantic-brand:        var(--palette-violet-500);
+  --semantic-brand-dim:    rgba(139,92,246,0.12);
+  --semantic-brand-border: rgba(139,92,246,0.32);
+  --semantic-brand-text:   #a78bfa;
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     3. CC 兼容语义 Token（保持与 CC tokenizedColors 命名一致）
+     前缀 --color-* 对应 CC 的 Design Token 命名约定
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --color-success:          var(--semantic-success);
+  --color-success-subtle:   var(--semantic-success-dim);
+  --color-success-border:   var(--semantic-success-border);
+  --color-success-fg:       var(--semantic-success-text);
+
+  --color-warning:          var(--semantic-warning);
+  --color-warning-subtle:   var(--semantic-warning-dim);
+  --color-warning-border:   var(--semantic-warning-border);
+  --color-warning-fg:       var(--semantic-warning-text);
+
+  --color-danger:           var(--semantic-error);
+  --color-danger-subtle:    var(--semantic-error-dim);
+  --color-danger-border:    var(--semantic-error-border);
+  --color-danger-fg:        var(--semantic-error-text);
+
+  --color-info:             var(--semantic-info);
+  --color-info-subtle:      var(--semantic-info-dim);
+  --color-info-border:      var(--semantic-info-border);
+  --color-info-fg:          var(--semantic-info-text);
+
+  --color-neutral:          var(--semantic-neutral);
+  --color-neutral-subtle:   var(--semantic-neutral-dim);
+  --color-neutral-border:   var(--semantic-neutral-border);
+  --color-neutral-fg:       var(--semantic-neutral-text);
+
+  --color-accent:           var(--semantic-brand);
+  --color-accent-subtle:    var(--semantic-brand-dim);
+  --color-accent-border:    var(--semantic-brand-border);
+  --color-accent-fg:        var(--semantic-brand-text);
+
+  /* Text tokens */
+  --color-text-primary:     #e4ebff;
+  --color-text-secondary:   #c0ceee;
+  --color-text-muted:       #8ba0c8;
+  --color-text-disabled:    #4e6089;
+  --color-text-inverse:     #06101e;
+  --color-text-link:        #60a5fa;
+
+  /* Background tokens */
+  --color-bg-base:          #070c18;
+  --color-bg-subtle:        #0a1020;
+  --color-bg-panel:         #0d1629;
+  --color-bg-panel-alt:     #111e38;
+  --color-bg-elevated:      #152240;
+  --color-bg-overlay:       rgba(0,0,0,0.72);
+
+  /* Border tokens */
+  --color-border:           rgba(255,255,255,0.07);
+  --color-border-subtle:    rgba(255,255,255,0.04);
+  --color-border-strong:    rgba(255,255,255,0.14);
+  --color-border-focus:     rgba(91,150,255,0.55);
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     4. 圆角 Token（收敛到 7 级，CC radii 兼容）
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --radius-xs:   3px;    /* 微小元素：标签内装饰 */
+  --radius-sm:   5px;    /* 按钮、小标签、徽章 */
+  --radius-md:   8px;    /* 卡片、开关、滑块、输入框 */
+  --radius-lg:   12px;   /* 大卡片、面板 */
+  --radius-xl:   16px;   /* 模态框、大容器 */
+  --radius-2xl:  20px;   /* 特大容器 */
+  --radius-pill: 9999px; /* 圆形胶囊 */
+
+  /* CC 兼容别名 */
+  --radii-none:  0;
+  --radii-sm:    var(--radius-sm);
+  --radii-md:    var(--radius-md);
+  --radii-lg:    var(--radius-lg);
+  --radii-xl:    var(--radius-xl);
+  --radii-full:  var(--radius-pill);
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     5. 字号 Token（收敛到 7 级）
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --text-xs:   11px;   /* 注释、次要信息、上标 */
+  --text-sm:   12px;   /* 标签、说明文字 */
+  --text-base: 14px;   /* 正文默认 */
+  --text-md:   16px;   /* 强调正文 / 小标题 */
+  --text-lg:   18px;   /* 分区标题 */
+  --text-xl:   20px;   /* 页面次标题 */
+  --text-2xl:  24px;   /* 页面大标题 */
+  --text-3xl:  32px;   /* KPI 数值 */
+
+  /* 字重 */
+  --font-normal:    400;
+  --font-medium:    500;
+  --font-semibold:  600;
+  --font-bold:      700;
+  --font-extrabold: 800;
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     6. 间距 Token（CC spacing 兼容，8px 基础网格）
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;   /* 默认区块间距 */
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+  --space-9:  48px;
+  --space-10: 64px;
+
+  /* 语义别名（CC spacing 命名） */
+  --spacing-xs:  var(--space-1);
+  --spacing-sm:  var(--space-2);
+  --spacing-md:  var(--space-4);
+  --spacing-lg:  var(--space-6);
+  --spacing-xl:  var(--space-7);
+  --spacing-2xl: var(--space-9);
+  --spacing-3xl: var(--space-10);
+
+  /* 组件内边距语义 */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     7. 卡片设计规范 Token
+     圆角/内边距/投影/字号层级
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* 卡片圆角 */
+  --card-radius-sm:  var(--radius-md);    /* 紧凑型卡片: 8px */
+  --card-radius-md:  var(--radius-lg);    /* 标准卡片:  12px */
+  --card-radius-lg:  var(--radius-xl);    /* 大型卡片:  16px */
+
+  /* 卡片内边距 */
+  --card-pad-sm:  10px 14px;             /* 紧凑型 */
+  --card-pad-md:  14px 18px;             /* 标准型 */
+  --card-pad-lg:  20px 24px;             /* 宽松型 */
+
+  /* 卡片标题字号层级 */
+  --card-title-sm:    var(--text-xs);    /* 小卡片: 11px */
+  --card-title-md:    var(--text-sm);    /* 中卡片: 12px */
+  --card-title-lg:    var(--text-base);  /* 大卡片: 14px */
+  --card-body-text:   var(--text-sm);    /* 卡片正文: 12px */
+  --card-meta-text:   var(--text-xs);    /* 元信息: 11px */
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     8. 投影 Token（CC shadows 兼容）
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.2);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.3),  0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.4),  0 4px 8px rgba(0,0,0,0.25);
+  --shadow-xl:  0 20px 48px rgba(0,0,0,0.5);
+  --shadow-2xl: 0 32px 64px rgba(0,0,0,0.6);
+
+  /* 彩色辉光 */
+  --glow-primary: 0 0 20px rgba(91,150,255,0.2);
+  --glow-success: 0 0 16px rgba(34,197,94,0.2);
+  --glow-warning: 0 0 16px rgba(234,179,8,0.2);
+  --glow-danger:  0 0 16px rgba(239,68,68,0.2);
+  --glow-brand:   0 0 20px rgba(139,92,246,0.2);
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     9. 三栏布局规范 Token
+     sidebar 240px + panel(弹性) + inspector 256px
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --layout-sidebar-w:      240px;   /* 左侧导航栏宽度 */
+  --layout-inspector-w:    256px;   /* 右侧检查器宽度 */
+  --layout-topbar-h:       56px;    /* 顶部导航高度（紧凑模式） */
+  --layout-content-pad-x:  28px;    /* 内容区水平内边距 */
+  --layout-content-pad-y:  24px;    /* 内容区垂直内边距 */
+  --layout-gap:            16px;    /* 主要布局间距 */
+
+  /* 内容区最大宽度 */
+  --layout-max-content:    1440px;
+  --layout-max-narrow:     840px;
+
+  /* 向下兼容旧变量名 */
+  --sidebar-w:     var(--layout-sidebar-w);
+  --inspector-w:   var(--layout-inspector-w);
+  --topbar-h:      var(--layout-topbar-h);
+  --content-pad-x: var(--layout-content-pad-x);
+  --content-pad-y: var(--layout-content-pad-y);
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     10. 组件规范 Token
+     Badge / Segment Switch / Quick Chip
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* Badge */
+  --badge-font-size:    var(--text-xs);
+  --badge-font-weight:  var(--font-semibold);
+  --badge-pad-x:        8px;
+  --badge-pad-y:        2px;
+  --badge-radius:       var(--radius-pill);
+  --badge-border-width: 1px;
+
+  /* Segment Switch */
+  --segment-pad-x:        14px;
+  --segment-pad-y:        5px;
+  --segment-radius:       var(--radius-md);
+  --segment-font-size:    var(--text-sm);
+  --segment-font-weight:  var(--font-medium);
+  --segment-bg:           rgba(255,255,255,0.04);
+  --segment-active-bg:    var(--color-bg-panel-alt);
+
+  /* Quick Chip */
+  --chip-pad-x:        12px;
+  --chip-pad-y:        4px;
+  --chip-radius:       var(--radius-pill);
+  --chip-font-size:    var(--text-sm);
+  --chip-font-weight:  var(--font-medium);
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     11. 动效 Token（CC motion 兼容）
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --dur-instant:  80ms;
+  --dur-fast:     120ms;
+  --dur-base:     200ms;
+  --dur-slow:     320ms;
+  --dur-slower:   480ms;
+
+  --ease-linear:  linear;
+  --ease-in:      cubic-bezier(0.64, 0, 0.78, 0);
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:  cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce:  cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* 简写 */
+  --transition-fast:   var(--dur-fast)   var(--ease-out);
+  --transition-base:   var(--dur-base)   var(--ease-out);
+  --transition-slow:   var(--dur-slow)   var(--ease-out);
+  --transition-spring: var(--dur-base)   var(--ease-spring);
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     12. Z-index 层级 Token
+     ───────────────────────────────────────────────────────────────────────── */
+
+  --z-base:     0;
+  --z-raised:   10;
+  --z-sticky:   50;
+  --z-nav:      100;
+  --z-overlay:  200;
+  --z-modal:    300;
+  --z-toast:    400;
+  --z-tooltip:  500;
+  --z-max:      9999;
+}

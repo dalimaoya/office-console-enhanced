@@ -11,7 +11,9 @@
     "verify-security": "tsx src/verify-security.ts",
     "start:pm2": "pm2 start ecosystem.config.js",
     "stop:pm2": "pm2 stop office-console",
-    "logs:pm2": "pm2 logs office-console"
+    "logs:pm2": "pm2 logs office-console",
+    "diagnose": "bash scripts/diagnose.sh",
+    "install-local": "bash scripts/install.sh"
   },
   "dependencies": {
     "express": "^4.21.2",
