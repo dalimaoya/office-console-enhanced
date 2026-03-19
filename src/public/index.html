@@ -51,6 +51,10 @@
             <span class="nav-icon">📄</span>
             <span class="nav-label">文档</span>
           </button>
+          <button class="nav-link" data-route="projects">
+            <span class="nav-icon">🗂️</span>
+            <span class="nav-label">项目组</span>
+          </button>
           <button class="nav-link" data-route="settings">
             <span class="nav-icon">⚙️</span>
             <span class="nav-label">设置</span>
@@ -171,6 +175,20 @@
               <div class="kpi-meta" id="kpi-queue-meta">待处理</div>
             </div>
           </div>
+          <!-- ── 三期：快速上下文卡片（冷启动快照） ── -->
+          <section class="panel" id="cold-start-panel">
+            <div class="panel-head">
+              <h3>快速上下文 <em>— 冷启动快照</em></h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="muted" id="cold-start-refresh-hint" style="font-size:var(--text-xs)">每5分钟自动刷新</span>
+                <button class="ghost-button" onclick="loadColdStart()">刷新</button>
+              </div>
+            </div>
+            <div id="cold-start-content" class="stack gap-sm">
+              <div class="muted">加载中…</div>
+            </div>
+          </section>
+
           <!-- 项目阶段卡片（Phase2：项目状态机） -->
           <section class="panel" id="project-status-panel">
             <div class="panel-head">
@@ -626,6 +644,41 @@
                 <div class="empty-box">请选择左侧模板查看详情。</div>
               </div>
             </section>
+          </div>
+        </section>
+
+        <!-- ── 三期：项目组（Projects）── -->
+        <section id="projects-page" class="page">
+          <div class="page-subtitle">管理所有项目实例，一键创建或归档项目组</div>
+
+          <!-- 操作栏 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+            <h3 style="margin:0">项目实例列表</h3>
+            <button class="primary-button" id="btn-new-instance" onclick="openNewInstanceModal()">＋ 新建项目组</button>
+          </div>
+
+          <div id="instances-state" class="state-box loading" style="display:none">加载中…</div>
+          <div id="instances-list" class="stack gap-sm">
+            <div class="muted">加载中…</div>
+          </div>
+
+          <!-- 新建项目组 Modal -->
+          <div id="new-instance-modal" class="modal-backdrop" style="display:none" onclick="closeNewInstanceModal(event)">
+            <div class="modal-box" onclick="event.stopPropagation()">
+              <div class="modal-header">
+                <h3>新建项目组</h3>
+                <button class="icon-btn" onclick="closeNewInstanceModal()">✕</button>
+              </div>
+              <div class="modal-body">
+                <label class="settings-label" for="new-instance-name">项目名称 <span style="color:var(--color-danger)">*</span></label>
+                <input type="text" id="new-instance-name" class="select-sm" style="width:100%;margin-top:6px" placeholder="请输入项目名称…" />
+                <div id="new-instance-error" class="state-box error" style="display:none;margin-top:8px"></div>
+              </div>
+              <div class="modal-footer">
+                <button class="secondary-button" onclick="closeNewInstanceModal()">取消</button>
+                <button class="primary-button" id="btn-confirm-instance" onclick="confirmNewInstance()">确认创建</button>
+              </div>
+            </div>
           </div>
         </section>
       </main>

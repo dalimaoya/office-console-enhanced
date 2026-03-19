@@ -265,6 +265,7 @@ const ROUTES = {
   usage:         { label: '用量',       icon: '📊' },
   memory:        { label: '记忆',       icon: '🧠' },
   docs:          { label: '文档',       icon: '📄' },
+  projects:      { label: '项目组',     icon: '🗂️' },
   settings:      { label: '设置',       icon: '⚙️' },
 };
 
@@ -4044,7 +4045,7 @@ function renderWiringStatus() {
 async function loadRouteData(route) {
   switch (route) {
     case 'overview':
-      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadEventLogView(), loadRegistryView(), loadProjectStatus()]);
+      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadEventLogView(), loadRegistryView(), loadProjectStatus(), loadColdStart()]);
       break;
     case 'agents':
       await loadAgents();
@@ -4071,6 +4072,9 @@ async function loadRouteData(route) {
       break;
     case 'memory':
       await loadMemory();
+      break;
+    case 'projects':
+      await loadInstances();
       break;
     default:
       break;
@@ -4560,6 +4564,169 @@ function renderOverviewAgentSummary() {
 
 
 /** P1-5: 将 ReadinessScore + Agent Summary 注入 Overview 页面 */
+// ─── 三期：冷启动快照 ─────────────────────────────────────────────────────────
+
+let _coldStartTimer = null;
+
+async function loadColdStart() {
+  const el = document.getElementById('cold-start-content');
+  if (!el) return;
+  try {
+    const { payload } = await apiFetch('/api/v1/cold-start');
+    const data = payload?.data || payload || {};
+    const phase      = data.currentPhase || data.phase || '—';
+    const activeObjs = data.activeObjects ?? data.activeCount ?? '—';
+    const events     = Array.isArray(data.recentEvents) ? data.recentEvents : (data.events || []);
+    const lastEvent  = events[0] || null;
+    const blockers   = Array.isArray(data.blockers) ? data.blockers : [];
+
+    let html = `<div class="grid two-up" style="gap:var(--space-sm)">
+      <div class="kpi-card tone-ok" style="padding:12px 16px">
+        <div class="kpi-label">当前项目阶段</div>
+        <div class="kpi-value" style="font-size:18px">${escapeHtml(String(phase))}</div>
+      </div>
+      <div class="kpi-card tone-ok" style="padding:12px 16px">
+        <div class="kpi-label">活跃对象数</div>
+        <div class="kpi-value" style="font-size:18px">${escapeHtml(String(activeObjs))}</div>
+      </div>
+    </div>`;
+
+    if (lastEvent) {
+      const evType = escapeHtml(lastEvent.type || lastEvent.event || '事件');
+      const evMsg  = escapeHtml(lastEvent.message || lastEvent.description || JSON.stringify(lastEvent));
+      const evTime = lastEvent.timestamp ? `<span class="muted" style="font-size:var(--text-xs)">${new Date(lastEvent.timestamp).toLocaleString('zh-CN')}</span>` : '';
+      html += `<div class="settings-card" style="margin-top:var(--space-sm);padding:10px 14px">
+        <div class="settings-card-title">📌 最近事件：${evType} ${evTime}</div>
+        <div class="muted" style="font-size:var(--text-sm);margin-top:4px">${evMsg}</div>
+      </div>`;
+    } else {
+      html += `<div class="muted" style="margin-top:var(--space-sm)">暂无最近事件</div>`;
+    }
+
+    if (blockers.length > 0) {
+      const blockerItems = blockers.map(b => `<li style="color:var(--color-danger)">${escapeHtml(String(b.message || b))}</li>`).join('');
+      html += `<div class="settings-card" style="margin-top:var(--space-sm);padding:10px 14px;border-left:3px solid var(--color-danger)">
+        <div class="settings-card-title">🚧 阻塞项（${blockers.length}）</div>
+        <ul style="margin:6px 0 0 16px;padding:0;font-size:var(--text-sm)">${blockerItems}</ul>
+      </div>`;
+    }
+
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<div class="muted">冷启动快照暂不可用</div>`;
+  }
+}
+
+function startColdStartTimer() {
+  if (_coldStartTimer) clearInterval(_coldStartTimer);
+  _coldStartTimer = setInterval(loadColdStart, 5 * 60 * 1000);
+}
+
+// ─── 三期：项目实例列表 ──────────────────────────────────────────────────────
+
+async function loadInstances() {
+  const listEl  = document.getElementById('instances-list');
+  const stateEl = document.getElementById('instances-state');
+  if (!listEl) return;
+  if (stateEl) { stateEl.style.display = 'block'; stateEl.className = 'state-box loading'; stateEl.textContent = '加载中…'; }
+  listEl.innerHTML = '';
+  try {
+    const { payload } = await apiFetch('/api/v1/instances');
+    const items = payload?.data?.items || payload?.data || (Array.isArray(payload) ? payload : []);
+    if (stateEl) stateEl.style.display = 'none';
+    if (!items.length) {
+      listEl.innerHTML = '<div class="empty-box">暂无项目实例，点击「新建项目组」创建第一个。</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(inst => {
+      const id       = escapeHtml(inst.id || '');
+      const name     = escapeHtml(inst.name || inst.projectName || id);
+      const status   = inst.status || 'active';
+      const isActive = status === 'active';
+      const badgeCls = isActive ? 'badge running' : 'badge muted';
+      const badgeTxt = isActive ? '活跃' : '已归档';
+      const created  = inst.createdAt ? new Date(inst.createdAt).toLocaleString('zh-CN') : '—';
+      return `<div class="settings-card" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px">
+        <div>
+          <div style="font-weight:600">${name}</div>
+          <div class="muted" style="font-size:var(--text-xs);margin-top:2px">创建时间：${escapeHtml(created)} · ID: ${id}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="${badgeCls}">${badgeTxt}</span>
+          ${isActive ? `<button class="ghost-button" onclick="archiveInstance('${id}')">归档</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    if (stateEl) { stateEl.style.display = 'block'; stateEl.className = 'state-box error'; stateEl.textContent = '加载失败，请稍后重试'; }
+    listEl.innerHTML = '';
+  }
+}
+
+async function archiveInstance(id) {
+  if (!confirm(`确认归档实例 "${id}"？归档后不可恢复激活。`)) return;
+  try {
+    await apiFetch(`/api/v1/instances/${encodeURIComponent(id)}/archive`, { method: 'POST' });
+    showToast({ type: 'success', message: '实例已归档' });
+    await loadInstances();
+  } catch (e) {
+    showToast({ type: 'error', message: '归档失败，请稍后重试' });
+  }
+}
+
+function openNewInstanceModal() {
+  const modal = document.getElementById('new-instance-modal');
+  const nameInput = document.getElementById('new-instance-name');
+  const errEl = document.getElementById('new-instance-error');
+  if (modal)     modal.style.display = 'flex';
+  if (nameInput) { nameInput.value = ''; nameInput.focus(); }
+  if (errEl)     errEl.style.display = 'none';
+}
+
+function closeNewInstanceModal(event) {
+  if (event && event.target !== document.getElementById('new-instance-modal')) return;
+  const modal = document.getElementById('new-instance-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function confirmNewInstance() {
+  const nameInput = document.getElementById('new-instance-name');
+  const errEl     = document.getElementById('new-instance-error');
+  const btn       = document.getElementById('btn-confirm-instance');
+  const name      = (nameInput?.value || '').trim();
+
+  if (!name) {
+    if (errEl) { errEl.style.display = 'block'; errEl.textContent = '请填写项目名称'; }
+    nameInput?.focus();
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  if (btn)   btn.disabled = true;
+
+  try {
+    await apiFetch('/api/v1/instances', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const modal = document.getElementById('new-instance-modal');
+    if (modal) modal.style.display = 'none';
+    showToast({ type: 'success', message: `项目组「${name}」创建成功` });
+    await loadInstances();
+  } catch (e) {
+    if (errEl) { errEl.style.display = 'block'; errEl.textContent = '创建失败，请稍后重试'; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+window.archiveInstance      = archiveInstance;
+window.openNewInstanceModal = openNewInstanceModal;
+window.closeNewInstanceModal = closeNewInstanceModal;
+window.confirmNewInstance   = confirmNewInstance;
+window.loadColdStart        = loadColdStart;
+window.loadInstances        = loadInstances;
+
 function updateOverviewExtras() {
   // 1. ReadinessScore — 插入到 KPI Grid 后面
   let readinessEl = document.getElementById('overview-readiness');
@@ -4625,6 +4792,7 @@ setInterval(() => { loadNotifications(); if (state.route === 'usage') loadBudget
 await loadRouteData(initialRoute);
 loadNotifications();
 if (initialRoute === 'usage') loadBudgetStatus();
+startColdStartTimer();
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('notification-bell-btn');
   const panel = document.getElementById('notification-panel');
