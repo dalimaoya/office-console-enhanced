@@ -7,11 +7,11 @@
       "gateway": {
         "status": "ok"
       },
-      "checkedAt": "2026-03-19T09:52:09.706Z"
+      "checkedAt": "2026-03-19T13:21:04.513Z"
     },
-    "fetchedAt": 1773913929628,
-    "expiresAt": 1773913944628,
-    "staleUntil": 1773913989628
+    "fetchedAt": 1773926464507,
+    "expiresAt": 1773926479507,
+    "staleUntil": 1773926524507
   },
   "templates.list": {
     "value": {
@@ -54,9 +54,9 @@
       ],
       "total": 5
     },
-    "fetchedAt": 1773914848632,
-    "expiresAt": 1773915148632,
-    "staleUntil": 1773916648632
+    "fetchedAt": 1773925979145,
+    "expiresAt": 1773926279145,
+    "staleUntil": 1773927779145
   },
   "agents": {
     "value": {
@@ -266,9 +266,9 @@
         "status": "warning",
         "uptime": "unknown",
         "version": "OpenClaw vunknown",
-        "lastCheck": "2026-03-19T09:52:10.623Z",
+        "lastCheck": "2026-03-19T13:21:02.391Z",
         "performance": {
-          "avgResponseMs": 479,
+          "avgResponseMs": 452,
           "health": "healthy"
         }
       },
@@ -276,8 +276,8 @@
         "total": 12,
         "active": 8,
         "statusBreakdown": {
-          "working": 1,
-          "idle": 7,
+          "working": 0,
+          "idle": 8,
           "blocked": 3,
           "backlog": 0,
           "error": 0,
@@ -302,8 +302,8 @@
         "recentActivity": []
       },
       "usage": {
-        "todayTokens": 32973804,
-        "todayCost": 40.149429,
+        "todayTokens": 58346014,
+        "todayCost": 53.510337,
         "period": "today"
       },
       "alerts": [
@@ -312,7 +312,7 @@
           "type": "agent_health",
           "message": "Agent '卡牌大师' 最近活跃时间过久，当前可能离线",
           "suggestion": "检查对应工作区运行情况",
-          "timestamp": "2026-03-19T09:52:10.623Z"
+          "timestamp": "2026-03-19T13:21:02.391Z"
         }
       ],
       "readinessScore": {
@@ -330,7 +330,7 @@
               {
                 "check": "SSE 客户端数",
                 "status": "pass",
-                "detail": "当前有 1 个 SSE 客户端"
+                "detail": "当前有 2 个 SSE 客户端"
               },
               {
                 "check": "审计日志可写",
@@ -393,11 +393,11 @@
             ]
           }
         ],
-        "computedAt": "2026-03-19T09:52:10.623Z"
+        "computedAt": "2026-03-19T13:21:02.391Z"
       }
     },
-    "fetchedAt": 1773913929597,
-    "expiresAt": 1773913959597,
-    "staleUntil": 1773914529597
+    "fetchedAt": 1773926461368,
+    "expiresAt": 1773926491368,
+    "staleUntil": 1773927061368
   }
 }
