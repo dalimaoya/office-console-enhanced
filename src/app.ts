@@ -16,7 +16,7 @@ export function createApp() {
   app.use(auditLogger);
   app.get('/health', (_req, res) => res.json({ ok: true, service: 'office-dashboard-adapter' }));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
-  app.use('/assets', express.static(publicDir));
+  app.use('/assets', express.static(publicDir, { etag: false, lastModified: false, setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store'); } }));
   app.use('/api/v1', apiRouter);
   app.get(['/','/dashboard','/config'], (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
   app.get('/office/dashboard', (_req, res) => res.redirect(307, '/api/v1/dashboard'));

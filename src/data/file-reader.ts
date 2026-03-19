@@ -92,7 +92,7 @@ export class OpenClawFileReader {
     const sessionsDir = join(this.root, 'agents', agentId, 'sessions');
     try {
       const files = await readdir(sessionsDir);
-      const active = files.filter((f) => f.endsWith('.jsonl') && !f.includes('.deleted') && !f.includes('.reset'));
+      const active = files.filter((f) => f.endsWith('.jsonl') && !f.includes('.deleted') && !f.includes('.reset') && !f.startsWith('probe-'));
       if (!active.length) return null;
 
       // 取最新修改时间
