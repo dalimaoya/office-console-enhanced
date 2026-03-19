@@ -133,7 +133,7 @@
               <div class="health-card-title" id="health-card-title">部分集成未连接</div>
               <div class="health-card-desc" id="health-card-desc">飞书通知未配置，连接后可接收 Agent 工作通知</div>
             </div>
-            <a href="#settings" class="health-card-action" id="connection-health-action-btn">去配置 →</a>
+            <a href="#settings" class="health-card-action" id="connection-health-action-btn" onclick="if(window.navigateTo){event.preventDefault();window.navigateTo('settings');}">去配置 →</a>
           </div>
           <!-- 系统状态摘要行 -->
           <div class="status-headline" id="overview-status-headline">
@@ -476,7 +476,7 @@
                 <p class="feishu-empty-state__title">飞书通知未配置</p>
                 <p class="feishu-empty-state__desc">连接飞书后可接收 Agent 工作通知，及时掌握任务进展</p>
               </div>
-              <a href="#settings" class="feishu-empty-state__cta btn btn--accent" id="feishu-empty-state-cta">去配置</a>
+              <a href="#feishu-alert-section" class="feishu-empty-state__cta btn btn--accent" id="feishu-empty-state-cta" onclick="if(window.navigateTo){event.preventDefault();if(window._appState&&window._appState.route==='settings'){document.getElementById('feishu-alert-section')?.scrollIntoView({behavior:'smooth'});}else{window.navigateTo('settings');}}">去配置</a>
             </div>
             <div id="feishu-notify-status" class="stack gap-sm">
               <div class="muted">加载中…</div>

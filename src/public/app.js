@@ -576,6 +576,11 @@ function setRoute(route) {
 
 function navigateTo(route) {
   if (!ROUTES[route]) route = 'overview';
+  if (route === state.route) {
+    // 已在目标页，强制重载数据
+    loadRouteData(route);
+    return;
+  }
   setRoute(route);
   loadRouteData(route);
 }
@@ -601,6 +606,7 @@ function goToSettings() {
 }
 window.navigateTo = navigateTo;
 window.goToSettings = goToSettings;
+window._appState = state; // expose for inline event handlers
 
 function isFeishuConfigured() {
   const localToken = (localStorage.getItem('feishu_token') || '').trim();
