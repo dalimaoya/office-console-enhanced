@@ -12,16 +12,19 @@
 import { getFeishuNotifier } from './feishu-notifier.js';
 import { log } from '../utils/logger.js';
 import type { ContextPressureItem } from './usage-service.js';
+import { getAlertThresholds } from './settings-service.js';
 
 // 避免短时间内对同一 agent 重复发送通知（简单内存防重）
 const contextAlertSentAt = new Map<string, number>();
 const idleAlertSentAt = new Map<string, number>();
+let dailyCostAlertSentAt = 0;
 
 const CONTEXT_ALERT_COOLDOWN_MS = 30 * 60 * 1000; // 30 分钟内不重复通知
 const IDLE_ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 60 分钟内不重复通知
+const DAILY_COST_ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 60 分钟内不重复通知
 
 /**
- * 检查 context 压力，对 pressureRatio >= 0.8 的 agent 异步发送飞书告警
+ * 检查 context 压力，超过配置阈值时异步发送飞书告警
  * 设计为非阻塞：调用方 await 此函数后立即继续，通知在后台发送
  */
 export function checkAndNotifyContextPressure(items: ContextPressureItem[]): void {
@@ -30,8 +33,11 @@ export function checkAndNotifyContextPressure(items: ContextPressureItem[]): voi
     const notifier = getFeishuNotifier();
     if (!notifier.isConfigured) return;
 
+    const thresholds = await getAlertThresholds();
+    const contextPressureThreshold = thresholds.contextPressurePercent / 100;
+
     for (const item of items) {
-      if (item.pressureRatio < 0.8) continue;
+      if (item.pressureRatio < contextPressureThreshold) continue;
 
       const now = Date.now();
       const lastSent = contextAlertSentAt.get(item.agentId) ?? 0;
@@ -60,7 +66,7 @@ export interface AgentIdleInfo {
 }
 
 /**
- * 检查 agent idle 时间，对 idle > 2 小时的 agent 异步发送飞书告警
+ * 检查 agent idle 时间，超过配置阈值时异步发送飞书告警
  * 设计为非阻塞
  */
 export function checkAndNotifyIdleAgents(agents: AgentIdleInfo[]): void {
@@ -68,7 +74,8 @@ export function checkAndNotifyIdleAgents(agents: AgentIdleInfo[]): void {
     const notifier = getFeishuNotifier();
     if (!notifier.isConfigured) return;
 
-    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    const thresholds = await getAlertThresholds();
+    const idleThresholdMs = thresholds.agentIdleMinutes * 60 * 1000;
     const now = Date.now();
 
     for (const agent of agents) {
@@ -78,7 +85,7 @@ export function checkAndNotifyIdleAgents(agents: AgentIdleInfo[]): void {
       if (isNaN(lastActive)) continue;
 
       const idleMs = now - lastActive;
-      if (idleMs < TWO_HOURS_MS) continue;
+      if (idleMs < idleThresholdMs) continue;
 
       const lastSent = idleAlertSentAt.get(agent.agentId) ?? 0;
       if (now - lastSent < IDLE_ALERT_COOLDOWN_MS) continue;

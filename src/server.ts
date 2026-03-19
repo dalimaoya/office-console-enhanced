@@ -8,6 +8,7 @@ import { initFileWatcher } from './data/file-watcher.js';
 import { initFeishuNotifier, getFeishuNotifier } from './services/feishu-notifier.js';
 import { appendTimelineEvent } from './services/timeline-service.js';
 import { eventLogService } from './services/event-log-service.js';
+import { coldStartService } from './services/cold-start-service.js';
 
 // ── Iter-6：初始化飞书通知服务 ───────────────────────────────────────────────
 initFeishuNotifier();
@@ -103,6 +104,9 @@ if (env.useFileReader) {
 // ── 启动 HTTP Server ─────────────────────────────────────────────────────────
 
 eventLogService.init();
+
+// ── 二期：冷启动快照服务 ─────────────────────────────────────────────────────
+coldStartService.start();
 
 const app = createApp();
 app.listen(env.port, env.host, () => {

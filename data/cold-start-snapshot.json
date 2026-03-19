@@ -1,0 +1,160 @@
+{
+  "generatedAt": "2026-03-19T16:37:39.244Z",
+  "projectStage": {
+    "currentStage": "active",
+    "previousStage": null,
+    "blockReason": null
+  },
+  "activeObjectCount": 1,
+  "activeObjects": [
+    {
+      "object_id": "artifact-20260319-04-file-schema",
+      "type": "artifact",
+      "title": "文件契约 Schema + 对象注册表 V1",
+      "owner": "architect-jax",
+      "status": "active"
+    }
+  ],
+  "recentEvents": [
+    {
+      "ts": "2026-03-19T16:34:03.001Z",
+      "event_type": "system.start",
+      "source_role": "system-gateway",
+      "description": "office-dashboard-adapter 服务启动"
+    },
+    {
+      "ts": "2026-03-19T16:32:59.065Z",
+      "event_type": "system.start",
+      "source_role": "system-gateway",
+      "description": "office-dashboard-adapter 服务启动"
+    },
+    {
+      "ts": "2026-03-19T16:31:30.034Z",
+      "event_type": "system.start",
+      "source_role": "system-gateway",
+      "description": "office-dashboard-adapter 服务启动"
+    },
+    {
+      "ts": "2026-03-19T16:29:43.165Z",
+      "event_type": "object.status_changed",
+      "source_role": "orchestrator-teemo",
+      "description": "项目阶段转移: init → active (二期启动)"
+    },
+    {
+      "ts": "2026-03-19T16:29:19.535Z",
+      "event_type": "system.start",
+      "source_role": "system-gateway",
+      "description": "office-dashboard-adapter 服务启动"
+    }
+  ],
+  "agentSummary": [
+    {
+      "id": "main",
+      "name": "Azir",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-aioffice-jayce",
+      "name": "杰斯",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-architect-jax",
+      "name": "贾克斯",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-backend-leona",
+      "name": "雷欧娜",
+      "status": "working",
+      "currentTask": "Iter-1 后端数据层重构任务记录"
+    },
+    {
+      "id": "agent-codingqa-galio",
+      "name": "加里奥",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-frontend-ezreal",
+      "name": "伊泽瑞尔",
+      "status": "blocked",
+      "currentTask": "Iter-1 前端 SSE 接入任务记录"
+    },
+    {
+      "id": "agent-orchestrator-teemo",
+      "name": "提莫",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-product-ekko",
+      "name": "艾克",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-ui-lux",
+      "name": "拉克丝",
+      "status": "blocked",
+      "currentTask": "CC 借鉴设计系统升级（Lux）"
+    },
+    {
+      "id": "agent-twisted-fate",
+      "name": "卡牌大师",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-braum",
+      "name": "布隆",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-heimerdinger",
+      "name": "大发明家",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-technical-advisor-codex",
+      "name": "瑞兹",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-fullstack-viktor",
+      "name": "维克托",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-product-swain",
+      "name": "斯维因",
+      "status": "idle",
+      "currentTask": null
+    },
+    {
+      "id": "agent-qa-bard",
+      "name": "巴德",
+      "status": "idle",
+      "currentTask": null
+    }
+  ],
+  "blockers": [
+    {
+      "source": "agent",
+      "id": "agent-frontend-ezreal",
+      "description": "Iter-1 前端 SSE 接入任务记录"
+    },
+    {
+      "source": "agent",
+      "id": "agent-ui-lux",
+      "description": "CC 借鉴设计系统升级（Lux）"
+    }
+  ]
+}

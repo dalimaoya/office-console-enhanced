@@ -11,9 +11,9 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { getFileReader } from '../data/file-reader.js';
 import { log } from '../utils/logger.js';
+import { getAlertThresholds } from './settings-service.js';
 
 const TASKS_DIR = '/root/.openclaw/workspace/projects/office-console-enhanced/tasks';
-const IDLE_WARNING_THRESHOLD_MS = 60 * 60_000; // 1 hour
 
 // CC 借鉴 P0-2：ACK 持久化文件（运行时数据）
 const ACK_FILE = '/root/.openclaw/workspace/projects/office-console-enhanced/runtime/acks.json';
@@ -144,18 +144,20 @@ async function readAgentWarnings(): Promise<AgentWarning[]> {
   try {
     const fileReader = getFileReader();
     const agentConfigs = await fileReader.listAgentConfigs();
+    const thresholds = await getAlertThresholds();
+    const idleWarningThresholdMs = thresholds.agentIdleMinutes * 60_000;
     const now = Date.now();
 
     for (const agent of agentConfigs) {
       const agentId = agent.id;
       const lastActiveMs = await fileReader.getAgentLastActiveMs(agentId);
 
-      if (lastActiveMs !== null && now - lastActiveMs > IDLE_WARNING_THRESHOLD_MS) {
+      if (lastActiveMs !== null && now - lastActiveMs > idleWarningThresholdMs) {
         const idleMin = Math.floor((now - lastActiveMs) / 60_000);
         warnings.push({
           type: 'agent',
           agentId,
-          message: `Agent ${agentId} 已空闲 ${idleMin} 分钟，超过阈值（60分钟）`,
+          message: `Agent ${agentId} 已空闲 ${idleMin} 分钟，超过阈值（${thresholds.agentIdleMinutes}分钟）`,
           level: 'warning',
         });
       }

@@ -15,7 +15,8 @@ import { constants } from 'node:fs';
 import * as net from 'node:net';
 import { join } from 'node:path';
 import { env } from '../config/env.js';
-import { sendSuccess } from '../utils/responses.js';
+import { sendError, sendSuccess } from '../utils/responses.js';
+import { getAlertThresholds, updateAlertThresholds, type AlertThresholds } from '../services/settings-service.js';
 
 /** 服务启动时间（进程启动时记录） */
 const startedAt = new Date().toISOString();
@@ -27,14 +28,64 @@ const SSE_DEFAULT_URL = 'http://127.0.0.1:3030/api/v1/events';
 
 export async function getSettings(_req: Request, res: Response, next: NextFunction) {
   try {
+    const alertThresholds = await getAlertThresholds();
     const settings = {
       readonlyMode: env.readonlyMode,
       tokenEnabled: env.consoleToken.length > 0,
       dryRunEnabled: env.dryRunDefault,
       version: process.env.npm_package_version ?? 'unknown',
       startedAt,
+      alertThresholds,
     };
     return sendSuccess(res, settings);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAlertSettings(req: Request, res: Response, next: NextFunction) {
+  try {
+    const payload = req.body?.alertThresholds;
+    if (!payload || typeof payload !== 'object') {
+      return sendError(res, 400, 'INVALID_ALERT_THRESHOLDS', 'alertThresholds object is required');
+    }
+
+    const numericKeys: Array<keyof AlertThresholds> = [
+      'contextPressurePercent',
+      'agentIdleMinutes',
+      'costDailyUSD',
+    ];
+
+    for (const key of numericKeys) {
+      if (payload[key] !== undefined) {
+        const value = Number(payload[key]);
+        if (!Number.isFinite(value) || value < 0) {
+          return sendError(res, 400, 'INVALID_ALERT_THRESHOLDS', `${key} must be a non-negative number`);
+        }
+      }
+    }
+
+    if (req.dryRun ?? true) {
+      const current = await getAlertThresholds();
+      const preview = {
+        ...current,
+        ...Object.fromEntries(numericKeys.filter((key) => payload[key] !== undefined).map((key) => [key, Number(payload[key])])),
+      } satisfies AlertThresholds;
+
+      return sendSuccess(res, {
+        dryRun: true,
+        message: '这是预演模式（dry-run）结果，没有实际写入 alert-config.json。如需实际保存，请设置 dryRun=false',
+        current,
+        next: preview,
+      });
+    }
+
+    const alertThresholds = await updateAlertThresholds(payload);
+    return sendSuccess(res, {
+      alertThresholds,
+      dryRun: false,
+      message: '告警阈值配置已更新并持久化到 data/alert-config.json',
+    });
   } catch (error) {
     next(error);
   }

@@ -13,7 +13,7 @@ import { getCollaboration, getSessions, getSessionById, getMessages, getCollabor
 import { getUsage, byAgent, byModel, contextPressure } from '../controllers/usage-controller.js';
 import { searchAll } from '../controllers/search-controller.js';
 import { getMemory, getMemoryHealthHandler } from '../controllers/memory-controller.js';
-import { getSettings, wiringStatus, connectionHealth, securitySummary, updateStatus } from '../controllers/settings-controller.js';
+import { getSettings, updateAlertSettings, wiringStatus, connectionHealth, securitySummary, updateStatus } from '../controllers/settings-controller.js';
 import { getActionQueueHandler, ackItem } from '../controllers/action-queue-controller.js';
 import { getCronHandler } from '../controllers/cron-controller.js';
 import { getTimeline } from '../controllers/timeline-controller.js';
@@ -33,6 +33,7 @@ import { getEventLog } from '../controllers/event-log-controller.js';
 import { getRegistry, getRegistryById } from '../controllers/registry-controller.js';
 import { getDiagnostic } from '../controllers/diagnostic-controller.js';
 import { getProjectStatus, postProjectTransition } from '../controllers/project-status-controller.js';
+import { getColdStart } from '../controllers/cold-start-controller.js';
 
 export const apiRouter = Router();
 
@@ -92,8 +93,9 @@ apiRouter.get('/collaboration/graph', getCollaborationGraphHandler);
 apiRouter.get('/usage', getUsage);
 apiRouter.get('/memory', getMemory);
 
-// Iter-6 新增：Settings 安全配置（只读）
+// Iter-6 新增：Settings 安全配置（含告警阈值配置）
 apiRouter.get('/settings', getSettings);
+apiRouter.post('/settings/alerts', updateAlertSettings);
 
 // Iter-2 新增：待办/异常聚合
 apiRouter.get('/action-queue', getActionQueueHandler);
@@ -137,3 +139,6 @@ apiRouter.get('/registry/:object_id', getRegistryById);
 // 二期：项目状态机
 apiRouter.get('/projects/status', getProjectStatus);
 apiRouter.post('/projects/transition', postProjectTransition);
+
+// 二期：冷启动快照
+apiRouter.get('/cold-start', getColdStart);
