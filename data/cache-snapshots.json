@@ -7,11 +7,11 @@
       "gateway": {
         "status": "ok"
       },
-      "checkedAt": "2026-03-19T13:21:04.513Z"
+      "checkedAt": "2026-03-19T13:40:05.435Z"
     },
-    "fetchedAt": 1773926464507,
-    "expiresAt": 1773926479507,
-    "staleUntil": 1773926524507
+    "fetchedAt": 1773927605433,
+    "expiresAt": 1773927620433,
+    "staleUntil": 1773927665433
   },
   "templates.list": {
     "value": {
@@ -54,9 +54,9 @@
       ],
       "total": 5
     },
-    "fetchedAt": 1773925979145,
-    "expiresAt": 1773926279145,
-    "staleUntil": 1773927779145
+    "fetchedAt": 1773927598510,
+    "expiresAt": 1773927898510,
+    "staleUntil": 1773929398510
   },
   "agents": {
     "value": {
@@ -263,31 +263,31 @@
   "dashboard": {
     "value": {
       "system": {
-        "status": "warning",
+        "status": "normal",
         "uptime": "unknown",
         "version": "OpenClaw vunknown",
-        "lastCheck": "2026-03-19T13:21:02.391Z",
+        "lastCheck": "2026-03-19T16:12:05.823Z",
         "performance": {
-          "avgResponseMs": 452,
+          "avgResponseMs": 537,
           "health": "healthy"
         }
       },
       "agents": {
-        "total": 12,
-        "active": 8,
+        "total": 16,
+        "active": 14,
         "statusBreakdown": {
-          "working": 0,
-          "idle": 8,
-          "blocked": 3,
+          "working": 1,
+          "idle": 13,
+          "blocked": 2,
           "backlog": 0,
           "error": 0,
-          "offline": 1,
+          "offline": 0,
           "unknown": 0
         },
         "quickStats": [
           {
             "name": "Task Success Rate",
-            "value": "67%",
+            "value": "88%",
             "trend": "stable"
           },
           {
@@ -302,19 +302,11 @@
         "recentActivity": []
       },
       "usage": {
-        "todayTokens": 58346014,
-        "todayCost": 53.510337,
+        "todayTokens": 70793716,
+        "todayCost": 65.808186,
         "period": "today"
       },
-      "alerts": [
-        {
-          "level": "warning",
-          "type": "agent_health",
-          "message": "Agent '卡牌大师' 最近活跃时间过久，当前可能离线",
-          "suggestion": "检查对应工作区运行情况",
-          "timestamp": "2026-03-19T13:21:02.391Z"
-        }
-      ],
+      "alerts": [],
       "readinessScore": {
         "overall": 65,
         "dimensions": [
@@ -330,7 +322,7 @@
               {
                 "check": "SSE 客户端数",
                 "status": "pass",
-                "detail": "当前有 2 个 SSE 客户端"
+                "detail": "当前有 1 个 SSE 客户端"
               },
               {
                 "check": "审计日志可写",
@@ -393,11 +385,11 @@
             ]
           }
         ],
-        "computedAt": "2026-03-19T13:21:02.391Z"
+        "computedAt": "2026-03-19T16:12:05.823Z"
       }
     },
-    "fetchedAt": 1773926461368,
-    "expiresAt": 1773926491368,
-    "staleUntil": 1773927061368
+    "fetchedAt": 1773936724797,
+    "expiresAt": 1773936754797,
+    "staleUntil": 1773937324797
   }
 }

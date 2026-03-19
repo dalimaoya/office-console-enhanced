@@ -30,6 +30,7 @@ import {
 } from '../controllers/budget-controller.js';
 import { exportSnapshot, importSnapshot } from '../controllers/snapshot-controller.js';
 import { getEventLog } from '../controllers/event-log-controller.js';
+import { getRegistry, getRegistryById } from '../controllers/registry-controller.js';
 
 export const apiRouter = Router();
 
@@ -125,3 +126,7 @@ apiRouter.get('/usage/by-model', byModel);
 apiRouter.get('/sessions', getSessions);
 apiRouter.get('/sessions/:id/messages', getMessages);
 apiRouter.get('/sessions/:id', getSessionById);
+
+// 对象注册表（只读）
+apiRouter.get('/registry', getRegistry);
+apiRouter.get('/registry/:object_id', getRegistryById);
