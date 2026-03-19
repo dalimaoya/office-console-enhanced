@@ -3561,19 +3561,13 @@ const wiringState = { data: null, pending: false };
 const timelineState = { data: null, pending: false };
 
 function bindConnectionHealthAction() {
+  // onclick is set directly in HTML: onclick="navigateTo('settings')"
+  // No additional binding needed - avoid double-trigger race condition
   const actionBtn = document.getElementById('connection-health-action-btn');
-  if (!actionBtn || actionBtn.dataset.bound === 'true') return;
-  actionBtn.dataset.bound = 'true';
-  actionBtn.style.pointerEvents = 'auto';
-  actionBtn.style.cursor = 'pointer';
-  actionBtn.style.position = 'relative';
-  actionBtn.style.zIndex = '10';
-  actionBtn.onclick = null;
-  actionBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    goToSettings();
-  });
+  if (actionBtn) {
+    actionBtn.style.pointerEvents = 'auto';
+    actionBtn.style.cursor = 'pointer';
+  }
 }
 
 async function updateConnectionHealth() {
