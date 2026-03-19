@@ -1,5 +1,6 @@
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileLockService } from './file-lock-service.js';
 
 export interface RegistryEntry {
   object_id: string;
@@ -117,11 +118,49 @@ class RegistryService {
 
   /**
    * Append a new record to objects.md (Markdown table row).
-   * Internal-only; not exposed via API in phase 1.
+   * Protected by file lock to prevent concurrent write corruption.
    */
   async appendObject(entry: RegistryEntry): Promise<void> {
-    const row = `| ${entry.object_id} | ${entry.type} | ${entry.title} | ${entry.project} | ${entry.owner} | ${entry.status} | ${entry.created_at} | ${entry.file_path} |\n`;
-    await appendFile(this.registryPath, row, 'utf8');
+    await fileLockService.withLock(this.registryPath, async () => {
+      const row = `| ${entry.object_id} | ${entry.type} | ${entry.title} | ${entry.project} | ${entry.owner} | ${entry.status} | ${entry.created_at} | ${entry.file_path} |\n`;
+      await appendFile(this.registryPath, row, 'utf8');
+    });
+  }
+
+  /**
+   * Update status of an existing registry entry by object_id.
+   * Protected by file lock.
+   */
+  async updateStatus(objectId: string, newStatus: string): Promise<boolean> {
+    return fileLockService.withLock(this.registryPath, async () => {
+      let raw: string;
+      try {
+        raw = await readFile(this.registryPath, 'utf8');
+      } catch {
+        return false;
+      }
+
+      const lines = raw.split('\n');
+      let found = false;
+
+      const updated = lines.map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) return line;
+
+        const cells = trimmed.slice(1, -1).split('|').map((c) => c.trim());
+        if (cells.length < 6) return line;
+        if (cells[0] === objectId) {
+          found = true;
+          cells[5] = newStatus;
+          return '| ' + cells.join(' | ') + ' |';
+        }
+        return line;
+      });
+
+      if (!found) return false;
+      await writeFile(this.registryPath, updated.join('\n'), 'utf8');
+      return true;
+    });
   }
 }
 

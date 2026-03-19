@@ -7,11 +7,11 @@
       "gateway": {
         "status": "ok"
       },
-      "checkedAt": "2026-03-19T16:24:36.787Z"
+      "checkedAt": "2026-03-19T16:59:58.038Z"
     },
-    "fetchedAt": 1773937476654,
-    "expiresAt": 1773937491654,
-    "staleUntil": 1773937536654
+    "fetchedAt": 1773939598034,
+    "expiresAt": 1773939613034,
+    "staleUntil": 1773939658034
   },
   "templates.list": {
     "value": {
@@ -54,9 +54,9 @@
       ],
       "total": 5
     },
-    "fetchedAt": 1773937480608,
-    "expiresAt": 1773937780608,
-    "staleUntil": 1773939280608
+    "fetchedAt": 1773939494526,
+    "expiresAt": 1773939794526,
+    "staleUntil": 1773941294526
   },
   "agents": {
     "value": {
@@ -266,19 +266,19 @@
         "status": "normal",
         "uptime": "unknown",
         "version": "OpenClaw vunknown",
-        "lastCheck": "2026-03-19T16:24:37.642Z",
+        "lastCheck": "2026-03-19T16:59:31.431Z",
         "performance": {
-          "avgResponseMs": 579,
+          "avgResponseMs": 560,
           "health": "healthy"
         }
       },
       "agents": {
         "total": 16,
-        "active": 14,
+        "active": 13,
         "statusBreakdown": {
-          "working": 1,
+          "working": 0,
           "idle": 13,
-          "blocked": 2,
+          "blocked": 3,
           "backlog": 0,
           "error": 0,
           "offline": 0,
@@ -287,7 +287,7 @@
         "quickStats": [
           {
             "name": "Task Success Rate",
-            "value": "88%",
+            "value": "81%",
             "trend": "stable"
           },
           {
@@ -302,8 +302,8 @@
         "recentActivity": []
       },
       "usage": {
-        "todayTokens": 76849784,
-        "todayCost": 70.714003,
+        "todayTokens": 96667423,
+        "todayCost": 87.869585,
         "period": "today"
       },
       "alerts": [],
@@ -322,7 +322,7 @@
               {
                 "check": "SSE 客户端数",
                 "status": "pass",
-                "detail": "当前有 1 个 SSE 客户端"
+                "detail": "当前有 3 个 SSE 客户端"
               },
               {
                 "check": "审计日志可写",
@@ -385,11 +385,11 @@
             ]
           }
         ],
-        "computedAt": "2026-03-19T16:24:37.642Z"
+        "computedAt": "2026-03-19T16:59:31.431Z"
       }
     },
-    "fetchedAt": 1773937476563,
-    "expiresAt": 1773937506563,
-    "staleUntil": 1773938076563
+    "fetchedAt": 1773939570403,
+    "expiresAt": 1773939600403,
+    "staleUntil": 1773940170403
   }
 }

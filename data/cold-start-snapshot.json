@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-03-19T16:42:39.179Z",
+  "generatedAt": "2026-03-19T17:00:46.869Z",
   "projectStage": {
     "currentStage": "active",
     "previousStage": null,
     "blockReason": null
   },
-  "activeObjectCount": 1,
+  "activeObjectCount": 3,
   "activeObjects": [
     {
       "object_id": "artifact-20260319-04-file-schema",
@@ -13,38 +13,52 @@
       "title": "文件契约 Schema + 对象注册表 V1",
       "owner": "architect-jax",
       "status": "active"
+    },
+    {
+      "object_id": "proj-bf4ea0a0",
+      "type": "project",
+      "title": "test-project",
+      "owner": "system",
+      "status": "active"
+    },
+    {
+      "object_id": "proj-84b2575f",
+      "type": "project",
+      "title": "qa-phase3-1773939290",
+      "owner": "system",
+      "status": "active"
     }
   ],
   "recentEvents": [
     {
-      "ts": "2026-03-19T16:37:39.168Z",
-      "event_type": "system.start",
-      "source_role": "system-gateway",
-      "description": "office-dashboard-adapter 服务启动"
+      "ts": "2026-03-19T16:59:58.034Z",
+      "event_type": "system.healthcheck_passed",
+      "source_role": "office-dashboard-adapter",
+      "description": "Dashboard 请求成功"
     },
     {
-      "ts": "2026-03-19T16:34:03.001Z",
-      "event_type": "system.start",
-      "source_role": "system-gateway",
-      "description": "office-dashboard-adapter 服务启动"
+      "ts": "2026-03-19T16:59:34.858Z",
+      "event_type": "system.healthcheck_passed",
+      "source_role": "office-dashboard-adapter",
+      "description": "Dashboard 请求成功"
     },
     {
-      "ts": "2026-03-19T16:32:59.065Z",
-      "event_type": "system.start",
-      "source_role": "system-gateway",
-      "description": "office-dashboard-adapter 服务启动"
+      "ts": "2026-03-19T16:59:31.432Z",
+      "event_type": "system.healthcheck_passed",
+      "source_role": "office-dashboard-adapter",
+      "description": "Dashboard 请求成功"
     },
     {
-      "ts": "2026-03-19T16:31:30.034Z",
-      "event_type": "system.start",
-      "source_role": "system-gateway",
-      "description": "office-dashboard-adapter 服务启动"
+      "ts": "2026-03-19T16:57:29.183Z",
+      "event_type": "system.healthcheck_passed",
+      "source_role": "office-dashboard-adapter",
+      "description": "Dashboard 请求成功"
     },
     {
-      "ts": "2026-03-19T16:29:43.165Z",
-      "event_type": "object.status_changed",
-      "source_role": "orchestrator-teemo",
-      "description": "项目阶段转移: init → active (二期启动)"
+      "ts": "2026-03-19T16:57:19.135Z",
+      "event_type": "system.healthcheck_passed",
+      "source_role": "office-dashboard-adapter",
+      "description": "Dashboard 请求成功"
     }
   ],
   "agentSummary": [
@@ -69,7 +83,7 @@
     {
       "id": "agent-backend-leona",
       "name": "雷欧娜",
-      "status": "working",
+      "status": "blocked",
       "currentTask": "Iter-1 后端数据层重构任务记录"
     },
     {
@@ -81,7 +95,7 @@
     {
       "id": "agent-frontend-ezreal",
       "name": "伊泽瑞尔",
-      "status": "working",
+      "status": "blocked",
       "currentTask": "Iter-1 前端 SSE 接入任务记录"
     },
     {
@@ -146,6 +160,16 @@
     }
   ],
   "blockers": [
+    {
+      "source": "agent",
+      "id": "agent-backend-leona",
+      "description": "Iter-1 后端数据层重构任务记录"
+    },
+    {
+      "source": "agent",
+      "id": "agent-frontend-ezreal",
+      "description": "Iter-1 前端 SSE 接入任务记录"
+    },
     {
       "source": "agent",
       "id": "agent-ui-lux",

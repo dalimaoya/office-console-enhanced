@@ -34,6 +34,7 @@ import { getRegistry, getRegistryById } from '../controllers/registry-controller
 import { getDiagnostic } from '../controllers/diagnostic-controller.js';
 import { getProjectStatus, postProjectTransition } from '../controllers/project-status-controller.js';
 import { getColdStart } from '../controllers/cold-start-controller.js';
+import { listInstances, createInstance, archiveInstance } from '../controllers/instance-controller.js';
 
 export const apiRouter = Router();
 
@@ -142,3 +143,8 @@ apiRouter.post('/projects/transition', postProjectTransition);
 
 // 二期：冷启动快照
 apiRouter.get('/cold-start', getColdStart);
+
+// 三期：项目实例管理
+apiRouter.get('/instances', listInstances);
+apiRouter.post('/instances', createInstance);
+apiRouter.post('/instances/:id/archive', archiveInstance);
