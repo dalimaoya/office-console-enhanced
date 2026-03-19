@@ -3090,11 +3090,11 @@ function renderUsageByAgent() {
         <tbody>
           ${items.map((item) => `
             <tr>
-              <td>${escapeHtml(item.agentId || item.name || '—')}${item.estimated ? '<span class="estimated-badge">（估算）</span>' : ''}</td>
+              <td>${escapeHtml(item.displayName || item.agentId || item.name || '—')}${item.estimated ? '<span class="estimated-badge">（估算）</span>' : ''}</td>
               <td class="muted">${escapeHtml(item.model || '—')}</td>
-              <td>${fmtNum(item.inputTokens ?? item.input_tokens)}</td>
-              <td>${fmtNum(item.outputTokens ?? item.output_tokens)}</td>
-              <td>${fmtCostUSD(item.estimatedCost ?? item.cost)}${item.estimated ? '<span class="estimated-badge">（估算）</span>' : ''}</td>
+              <td>${fmtNum(item.tokenIn ?? item.inputTokens ?? item.input_tokens)}</td>
+              <td>${fmtNum(item.tokenOut ?? item.outputTokens ?? item.output_tokens)}</td>
+              <td>${fmtCostUSD(item.costEstimateUSD ?? item.estimatedCost ?? item.cost)}${item.estimated ? '<span class="estimated-badge">（估算）</span>' : ''}</td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -3113,13 +3113,13 @@ function renderUsagePieChart(agentUsageData) {
   
   // 筛选和排序数据
   const filtered = agentUsageData.filter(d => {
-    const total = (d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0);
+    const total = d.totalToken ?? (d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0) || (d.tokens ?? 0);
     return total > 0 && d.agentId;
   }).map(d => ({
     id: d.agentId || d.name || `agent_${Math.random()}`,
-    name: d.agentId || d.name || '未知',
-    totalToken: (d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0),
-    cost: d.estimatedCost ?? d.cost ?? 0,
+    name: d.displayName || d.agentId || d.name || '未知',
+    totalToken: d.totalToken ?? (d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0) || (d.tokens ?? 0),
+    cost: d.costEstimateUSD ?? d.estimatedCost ?? d.cost ?? 0,
     color: getAgentColor(d.agentId || d.name)
   })).sort((a, b) => b.totalToken - a.totalToken);
   
