@@ -103,6 +103,14 @@ function animateCounter(el) {
   }, 50);
 }
 
+// Token 数字 KPI 紧凑格式（避免长数字）
+function fmtTokensKPI(n) {
+  if (n >= 1e8) return `${(n / 1e8).toFixed(2)} 亿`;
+  if (n >= 1e4) return `${(n / 1e4).toFixed(1)} 万`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)} K`;
+  return String(n);
+}
+
 // KPI 卡片配色（基于状态）
 function getKpiCardTone(value, warnThreshold = 0, errorThreshold = 0) {
   if (errorThreshold && value >= errorThreshold) return 'tone-error';
@@ -1402,7 +1410,9 @@ function updateDashboardKPIs(data) {
     if (kpiCardTasks) kpiCardTasks.className = `kpi-card ${getKpiCardTone(blockedTasks, 1, 3)}`;
   }
   if (kpiUsage) {
-    kpiUsage.dataset.counterTarget = todayTokens.toString();
+    // 直接显示紧凑格式，不走原始数字计数动画
+    kpiUsage.textContent = fmtTokensKPI(todayTokens);
+    delete kpiUsage.dataset.counterTarget;
     const costText = todayCost > 0 ? `≈ $${todayCost.toFixed(4)} USD` : '费用 ≈ $0';
     if (kpiUsageMeta) kpiUsageMeta.textContent = `${costText}`;
   }
@@ -4115,7 +4125,7 @@ function updateInspectorSidebar() {
   // 今日用量
   const usageValue = document.getElementById('inspector-usage-value');
   const usageMeta = document.getElementById('inspector-usage-meta');
-  if (usageValue) usageValue.textContent = `${formatNumber(todayTokens)} tokens`;
+  if (usageValue) usageValue.textContent = `${fmtTokensKPI(todayTokens)} tokens`;
   if (usageMeta) usageMeta.textContent = todayCost > 0 ? `≈ $${todayCost.toFixed(4)} USD` : '≈ $0 USD';
 
   // 活跃 Agent
