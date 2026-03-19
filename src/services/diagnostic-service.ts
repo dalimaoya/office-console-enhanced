@@ -2,7 +2,9 @@ import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, mkdir, open } from 'node:fs/promises';
 import { promisify } from 'node:util';
+import path from 'node:path';
 import { env } from '../config/env.js';
+import { getGatewayWsClient } from '../data/gateway-ws-client.js';
 
 const execFileAsync = promisify(execFile);
 const GATEWAY_WS_URL = 'ws://127.0.0.1:18789';
@@ -27,17 +29,21 @@ function timeoutMessage(ms: number) {
   return `检查超时（${ms}ms）`;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => T): Promise<T> {
+function withCheckTimeout(promise: Promise<DiagnosticCheckResult>, fallback: DiagnosticCheckResult, ms = 4500): Promise<DiagnosticCheckResult> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(onTimeout()), ms);
+    const timer = setTimeout(() => resolve(fallback), ms);
     promise
       .then((value) => {
         clearTimeout(timer);
         resolve(value);
       })
-      .catch(() => {
+      .catch((error) => {
         clearTimeout(timer);
-        resolve(onTimeout());
+        resolve({
+          ...fallback,
+          status: 'fail',
+          message: error instanceof Error ? error.message : String(error),
+        });
       });
   });
 }
@@ -45,6 +51,16 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => T): Pr
 async function checkGatewayConnection(): Promise<DiagnosticCheckResult> {
   const startedAt = Date.now();
   try {
+    const wsClient = getGatewayWsClient();
+    if (wsClient?.isConnected) {
+      await wsClient.call('ping', {}, 3000);
+      return {
+        name: 'Gateway连接',
+        status: 'pass',
+        message: `WebSocket 可达，ping/pong 正常（${Date.now() - startedAt}ms）`,
+      };
+    }
+
     const WS = (globalThis as typeof globalThis & { WebSocket?: typeof WebSocket }).WebSocket;
     if (!WS) {
       return { name: 'Gateway连接', status: 'fail', message: '当前 Node 运行时不支持 WebSocket' };
@@ -142,8 +158,8 @@ async function checkRegistryFile(): Promise<DiagnosticCheckResult> {
 
 async function checkEventLogWritable(): Promise<DiagnosticCheckResult> {
   try {
-    const filePath = new URL(EVENT_LOG_FILE, `file://${process.cwd()}/`).pathname;
-    await mkdir(new URL('.', `file://${filePath}`).pathname, { recursive: true });
+    const filePath = path.resolve(process.cwd(), EVENT_LOG_FILE);
+    await mkdir(path.dirname(filePath), { recursive: true });
     const handle = await open(filePath, 'a');
     await handle.close();
     await access(filePath, constants.W_OK);
@@ -183,25 +199,14 @@ async function checkSelfStatusEndpoint(): Promise<DiagnosticCheckResult> {
 
 export class DiagnosticService {
   async run(): Promise<DiagnosticResult> {
-    const checks: DiagnosticCheckResult[] = await withTimeout(
-      Promise.all([
-        checkGatewayConnection(),
-        checkOpenClawProcess(),
-        checkRegistryFile(),
-        checkEventLogWritable(),
-        checkFeishuWebhook(),
-        checkSelfStatusEndpoint(),
-      ]),
-      5000,
-      () => [
-        { name: 'Gateway连接', status: 'fail', message: timeoutMessage(5000) },
-        { name: 'OpenClaw进程', status: 'fail', message: timeoutMessage(5000) },
-        { name: '关键文件存在性', status: 'fail', message: timeoutMessage(5000) },
-        { name: '事件日志文件', status: 'fail', message: timeoutMessage(5000) },
-        { name: '飞书Webhook', status: 'warn', message: timeoutMessage(5000) },
-        { name: '端口健康', status: 'fail', message: timeoutMessage(5000) },
-      ],
-    );
+    const checks: DiagnosticCheckResult[] = await Promise.all([
+      withCheckTimeout(checkGatewayConnection(), { name: 'Gateway连接', status: 'fail', message: timeoutMessage(4500) }),
+      withCheckTimeout(checkOpenClawProcess(), { name: 'OpenClaw进程', status: 'fail', message: timeoutMessage(4500) }),
+      withCheckTimeout(checkRegistryFile(), { name: '关键文件存在性', status: 'fail', message: timeoutMessage(4500) }),
+      withCheckTimeout(checkEventLogWritable(), { name: '事件日志文件', status: 'fail', message: timeoutMessage(4500) }),
+      withCheckTimeout(checkFeishuWebhook(), { name: '飞书Webhook', status: 'warn', message: timeoutMessage(4500) }),
+      withCheckTimeout(checkSelfStatusEndpoint(), { name: '端口健康', status: 'fail', message: timeoutMessage(4500) }),
+    ]);
 
     const passed = checks.filter((item) => item.status === 'pass').length;
     const hasFail = checks.some((item) => item.status === 'fail');
