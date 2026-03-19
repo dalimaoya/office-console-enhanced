@@ -23,6 +23,7 @@ import { openclawCliAdapter } from '../adapters/openclaw-cli-adapter.js';
 import { getFileReader } from '../data/file-reader.js';
 import { env } from '../config/env.js';
 import { log } from '../utils/logger.js';
+import { eventLogService } from './event-log-service.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
 const TASKS_DIR = '/root/.openclaw/workspace/projects/office-console-enhanced/tasks';
@@ -286,6 +287,23 @@ export class AgentService {
           summaryTags: [agent.id.split('-').slice(-1)[0] ?? 'agent', status],
           statusDetail,
         } satisfies AgentSummary;
+
+        if (cached && cached.item.status !== status) {
+          const eventType = status === 'blocked'
+            ? 'role.task_blocked'
+            : status === 'working'
+              ? 'role.task_started'
+              : 'role.task_completed';
+          eventLogService.append({
+            event_type: eventType,
+            source_role: agent.id,
+            description: `Agent 状态切换 ${cached.item.status} -> ${status}`,
+            object_id: agent.id,
+            prev_state: { status: cached.item.status },
+            next_state: { status, currentTask: statusDetail.currentTask, pendingTaskCount: statusDetail.pendingTaskCount },
+            context: { via: 'cli' },
+          });
+        }
 
         this.agentCache.set(agent.id, {
           item,

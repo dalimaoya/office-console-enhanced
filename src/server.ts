@@ -7,6 +7,7 @@ import { initSseHub, getSseHub } from './data/sse-hub.js';
 import { initFileWatcher } from './data/file-watcher.js';
 import { initFeishuNotifier, getFeishuNotifier } from './services/feishu-notifier.js';
 import { appendTimelineEvent } from './services/timeline-service.js';
+import { eventLogService } from './services/event-log-service.js';
 
 // ── Iter-6：初始化飞书通知服务 ───────────────────────────────────────────────
 initFeishuNotifier();
@@ -101,12 +102,24 @@ if (env.useFileReader) {
 
 // ── 启动 HTTP Server ─────────────────────────────────────────────────────────
 
+eventLogService.init();
+
 const app = createApp();
 app.listen(env.port, env.host, () => {
   void appendTimelineEvent({
     type: 'system_start',
     summary: '服务启动',
     data: {
+      host: env.host,
+      port: env.port,
+    },
+  });
+  eventLogService.append({
+    event_type: 'system.start',
+    source_role: 'system-gateway',
+    description: 'office-dashboard-adapter 服务启动',
+    object_id: 'project-office-console-enhanced',
+    context: {
       host: env.host,
       port: env.port,
     },

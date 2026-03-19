@@ -20,7 +20,7 @@ try {
   console.log('   • readonlyGuard 模块: ✓ 存在');
   console.log('   • writeGate 模块: ✓ 存在');
 } catch (error) {
-  console.log('   • 安全模块检查失败:', error.message);
+  console.log('   • 安全模块检查失败:', error instanceof Error ? error.message : String(error));
 }
 
 console.log('\n3. 安全错误类型检查:');
@@ -31,7 +31,7 @@ try {
   console.log('   • IpNotAllowedError: ✓ 存在');
   console.log('   • DryRunRequiredError: ✓ 存在');
 } catch (error) {
-  console.log('   • 安全错误类型检查失败:', error.message);
+  console.log('   • 安全错误类型检查失败:', error instanceof Error ? error.message : String(error));
 }
 
 console.log('\n4. 审计服务检查:');
@@ -41,7 +41,7 @@ console.log(`   • 最近审计日志条目: ${recentLogs.length} 条`);
 
 console.log('\n5. 用户友好消息检查:');
 try {
-  const { default: errorHandlerModule } = await import('./middleware/error-handler.js');
+  await import('./middleware/error-handler.js');
   console.log('   • 错误处理器已更新: ✓');
   
   // 尝试导入错误处理器文件并检查是否有用户友好映射
@@ -55,7 +55,7 @@ try {
   console.log(`   • 用户友好消息映射: ${hasFriendlyMessages ? '✓' : '✗'}`);
   console.log(`   • 安全错误处理: ${hasSecurityErrorHandling ? '✓' : '✗'}`);
 } catch (error) {
-  console.log('   • 错误处理器检查失败:', error.message);
+  console.log('   • 错误处理器检查失败:', error instanceof Error ? error.message : String(error));
 }
 
 console.log('\n6. 路由安全检查:');
@@ -67,7 +67,7 @@ try {
   });
   console.log(`   • 路由应用安全中间件: ${hasSecurityMiddleware ? '✓' : '✗'}`);
 } catch (error) {
-  console.log('   • 路由检查失败:', error.message);
+  console.log('   • 路由检查失败:', error instanceof Error ? error.message : String(error));
 }
 
 console.log('\n=== 安全框架实现摘要 ===');

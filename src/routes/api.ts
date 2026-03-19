@@ -29,6 +29,7 @@ import {
   putBudgetPolicyHandler,
 } from '../controllers/budget-controller.js';
 import { exportSnapshot, importSnapshot } from '../controllers/snapshot-controller.js';
+import { getEventLog } from '../controllers/event-log-controller.js';
 
 export const apiRouter = Router();
 
@@ -60,6 +61,7 @@ apiRouter.post('/config/templates/:id/apply', applyTemplate);
 // Iter-1 新增：SSE 实时推送端点（只读）
 apiRouter.get('/events', getEvents);
 apiRouter.get('/events/status', getEventsStatus);
+apiRouter.get('/events/log', getEventLog);
 
 // Iter-4 新增：Tasks 和 Docs 文件列表（只读）
 apiRouter.get('/tasks', getTasks);

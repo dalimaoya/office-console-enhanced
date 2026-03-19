@@ -4,7 +4,6 @@ import { memoryCache } from '../cache/memory-cache.js';
 import { getGatewayWsClient } from '../data/gateway-ws-client.js';
 import { env } from '../config/env.js';
 import { log } from '../utils/logger.js';
-import { gatewayWsClient } from '../data/gateway-ws-client.js';
 import { existsSync, statSync } from 'node:fs';
 
 export interface HealthzCheck {

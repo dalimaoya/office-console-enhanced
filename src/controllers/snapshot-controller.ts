@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { agentService } from '../services/agent-service.js';
 import { getBudgetPolicy } from '../services/budget-service.js';
+import { eventLogService } from '../services/event-log-service.js';
 import { listNotifications } from '../services/persistent-notifications-service.js';
 import { readTimelineEvents } from '../services/timeline-service.js';
 import { sendError } from '../utils/responses.js';
@@ -94,8 +95,27 @@ export async function exportSnapshot(_req: Request, res: Response, next: NextFun
 
     const filenameDate = now.toISOString().slice(0, 10);
     res.setHeader('Content-Disposition', `attachment; filename="office-console-snapshot-${filenameDate}.json"`);
+    eventLogService.append({
+      event_type: 'object.created',
+      source_role: 'office-dashboard-adapter',
+      description: '导出控制台快照',
+      object_id: 'project-office-console-enhanced',
+      context: {
+        path: '/api/v1/snapshot/export',
+        sessions: sessions.length,
+        tasks: tasks.length,
+      },
+    });
     return res.json(payload);
   } catch (error) {
+    eventLogService.append({
+      event_type: 'object.updated',
+      source_role: 'office-dashboard-adapter',
+      description: '导出控制台快照失败',
+      object_id: 'project-office-console-enhanced',
+      error: error instanceof Error ? { summary: error.message, detail: error.stack } : { summary: String(error) },
+      context: { path: '/api/v1/snapshot/export' },
+    });
     next(error);
   }
 }
@@ -113,8 +133,27 @@ export async function importSnapshot(req: Request, res: Response, next: NextFunc
     await writeJsonWithBackup(BUDGET_POLICY_PATH, body.budget);
     await writeJsonWithBackup(NOTIFICATIONS_PATH, body.notifications);
 
+    eventLogService.append({
+      event_type: 'object.updated',
+      source_role: 'office-dashboard-adapter',
+      description: '导入控制台快照',
+      object_id: 'project-office-console-enhanced',
+      context: {
+        path: '/api/v1/snapshot/import',
+        imported: ['budget', 'notifications'],
+      },
+    });
+
     return res.json({ ok: true, imported: ['budget', 'notifications'] });
   } catch (error) {
+    eventLogService.append({
+      event_type: 'object.updated',
+      source_role: 'office-dashboard-adapter',
+      description: '导入控制台快照失败',
+      object_id: 'project-office-console-enhanced',
+      error: error instanceof Error ? { summary: error.message, detail: error.stack } : { summary: String(error) },
+      context: { path: '/api/v1/snapshot/import' },
+    });
     next(error);
   }
 }

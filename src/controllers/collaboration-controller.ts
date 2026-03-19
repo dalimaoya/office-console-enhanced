@@ -119,7 +119,7 @@ export async function getSessions(req: Request, res: Response, next: NextFunctio
 /** GET /api/v1/sessions/:id — session 详情 */
 export async function getSessionById(req: Request, res: Response, next: NextFunction) {
   try {
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const result = await getSession(id);
 
     if (!result.data) {
@@ -143,7 +143,7 @@ export async function getSessionById(req: Request, res: Response, next: NextFunc
 /** GET /api/v1/sessions/:id/messages — session 消息列表（支持 ?limit=N） */
 export async function getMessages(req: Request, res: Response, next: NextFunction) {
   try {
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const limitParam = Number(req.query.limit) || 20;
     const limit = Math.min(Math.max(1, limitParam), 100); // clamp 1~100
 
