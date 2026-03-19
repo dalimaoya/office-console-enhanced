@@ -92,17 +92,43 @@ export function checkAndNotifyIdleAgents(agents: AgentIdleInfo[]): void {
 
       idleAlertSentAt.set(agent.agentId, now);
       const idleHours = (idleMs / (60 * 60 * 1000)).toFixed(1);
-      const message = `😴 [${agent.agentId}] 已空闲 ${idleHours}h，是否需要任务？`;
+      const message = `😴 [${agent.agentId}] 已空闲 ${idleHours}h，超过阈值 ${thresholds.agentIdleMinutes} 分钟，是否需要任务？`;
 
       try {
         await notifier.sendText(message);
-        log('info', 'notify_idle_agent_sent', { agentId: agent.agentId, idleHours });
+        log('info', 'notify_idle_agent_sent', { agentId: agent.agentId, idleHours, thresholdMinutes: thresholds.agentIdleMinutes });
       } catch (err) {
         log('warn', 'notify_idle_agent_failed', {
           agentId: agent.agentId,
           err: String(err),
         });
       }
+    }
+  })();
+}
+
+export function checkAndNotifyDailyCost(dailyCostUSD: number): void {
+  void (async () => {
+    const notifier = getFeishuNotifier();
+    if (!notifier.isConfigured) return;
+
+    const thresholds = await getAlertThresholds();
+    if (dailyCostUSD < thresholds.costDailyUSD) return;
+
+    const now = Date.now();
+    if (now - dailyCostAlertSentAt < DAILY_COST_ALERT_COOLDOWN_MS) return;
+
+    dailyCostAlertSentAt = now;
+    const message = `💸 今日费用 $${dailyCostUSD.toFixed(2)}，已超过告警阈值 $${thresholds.costDailyUSD.toFixed(2)}`;
+
+    try {
+      await notifier.sendText(message);
+      log('info', 'notify_daily_cost_sent', {
+        dailyCostUSD: Number(dailyCostUSD.toFixed(4)),
+        thresholdUSD: thresholds.costDailyUSD,
+      });
+    } catch (err) {
+      log('warn', 'notify_daily_cost_failed', { err: String(err) });
     }
   })();
 }

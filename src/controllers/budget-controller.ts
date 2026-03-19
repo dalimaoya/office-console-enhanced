@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { sendError } from '../utils/responses.js';
 import { getBudgetPolicy, getBudgetStatus, updateBudgetPolicy } from '../services/budget-service.js';
+import { checkAndNotifyDailyCost } from '../services/notification-service.js';
 
 export async function getBudgetPolicyHandler(_req: Request, res: Response, next: NextFunction) {
   try {
@@ -40,6 +41,7 @@ export async function putBudgetPolicyHandler(req: Request, res: Response, next: 
 export async function getBudgetStatusHandler(_req: Request, res: Response, next: NextFunction) {
   try {
     const status = await getBudgetStatus();
+    checkAndNotifyDailyCost(status.daily_cost_usd);
     return res.json(status);
   } catch (error) {
     next(error);
