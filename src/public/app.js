@@ -3125,12 +3125,12 @@ function renderUsagePieChart(agentUsageData) {
   
   // 筛选和排序数据
   const filtered = agentUsageData.filter(d => {
-    const total = d.totalToken ?? (d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0) || (d.tokens ?? 0);
+    const total = d.totalToken ?? (((d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0)) || (d.tokens ?? 0));
     return total > 0 && d.agentId;
   }).map(d => ({
     id: d.agentId || d.name || `agent_${Math.random()}`,
     name: d.displayName || d.agentId || d.name || '未知',
-    totalToken: d.totalToken ?? (d.inputTokens ?? d.input_tokens ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0) || (d.tokens ?? 0),
+    totalToken: d.totalToken ?? (((d.inputTokens ?? d.input_inputs ?? 0) + (d.outputTokens ?? d.output_tokens ?? 0)) || (d.tokens ?? 0)),
     cost: d.costEstimateUSD ?? d.estimatedCost ?? d.cost ?? 0,
     color: getAgentColor(d.agentId || d.name)
   })).sort((a, b) => b.totalToken - a.totalToken);
