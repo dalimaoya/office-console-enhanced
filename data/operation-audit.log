@@ -9,3 +9,5 @@
 {"ts":"2026-03-19T08:51:02.948Z","method":"POST","path":"/api/v1/notifications/1773910255578-wrygt7/snooze","body_summary":"POST /api/v1/notifications/1773910255578-wrygt7/snooze","ip":"127.0.0.1","result":"ok"}
 {"ts":"2026-03-19T16:29:43.166Z","method":"POST","path":"/api/v1/projects/transition","body_summary":"POST /api/v1/projects/transition","ip":"127.0.0.1","result":"ok"}
 {"ts":"2026-03-19T16:29:43.190Z","method":"POST","path":"/api/v1/projects/transition","body_summary":"POST /api/v1/projects/transition","ip":"127.0.0.1","result":"error"}
+{"ts":"2026-03-19T16:39:16.466Z","method":"POST","path":"/api/v1/settings/alerts","body_summary":"POST /api/v1/settings/alerts","ip":"127.0.0.1","result":"ok"}
+{"ts":"2026-03-19T16:39:21.516Z","method":"POST","path":"/api/v1/settings/alerts","body_summary":"POST /api/v1/settings/alerts","ip":"127.0.0.1","result":"ok"}

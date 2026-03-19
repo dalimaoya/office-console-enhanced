@@ -76,6 +76,34 @@ const STATIC_TASKS = [
   { id: 'week1', filename: '2026-03-13-week1-validation-tasks.md', name: '第一周技术验证任务清单', status: 'done', role: 'orchestrator-teemo', date: '2026-03-13', size: '4.5 KB', preview: '# 第一周技术验证任务清单\n\n## 验证目标与范围\n\n授权范围：开发准备 + 第一周 Gateway 对接验证，不进入完整开发实施。\n\n完成状态：✓ 已交付' },
 ];
 
+// ─── 皮肤包机制：角色内外双名映射 ────────────────────────────────────────────
+const ROLE_SKIN = {
+  'orchestrator-teemo':       '项目指挥官',
+  'product-ekko':             '产品经理',
+  'architect-jax':            '架构师',
+  'frontend-ezreal':          '前端工程师',
+  'backend-leona':            '后端工程师',
+  'codingqa-galio':           '质量工程师',
+  'ui-lux':                   '设计师',
+  'aioffice-jayce':           '办公顾问',
+  'technical-advisor-ryze':   '技术顾问',
+};
+
+/**
+ * 获取角色显示名称
+ * 模式: 'external'（对外职能名，默认） / 'internal'（内部代号）
+ */
+function getRoleDisplayName(roleId) {
+  if (!roleId) return roleId || '';
+  const baseId = String(roleId).replace(/^agent-/, '');
+  const mode = localStorage.getItem('oc-display-name-mode') || 'external';
+  if (mode === 'internal') {
+    return AGENT_CHINESE_NAMES[roleId] || AGENT_CHINESE_NAMES[baseId] || roleId;
+  }
+  // external mode: ROLE_SKIN 优先，fallback AGENT_CHINESE_NAMES
+  return ROLE_SKIN[baseId] || ROLE_SKIN[roleId] || AGENT_CHINESE_NAMES[roleId] || AGENT_CHINESE_NAMES[baseId] || roleId;
+}
+
 // ─── CC 借鉴升级：新增常量与辅助函数 ──────────────────────────────────────
 // Agent emoji 映射（按 agentId 关键词）
 const AGENT_EMOJI = {
@@ -968,6 +996,157 @@ async function loadAgents() {
 // ─── Settings API ─────────────────────────────────────────────────────────────
 const settingsState = { data: null, pending: false };
 
+// ─── Phase2: 项目状态机 / 环境诊断 / 告警阈值 ────────────────────────────────
+const projectStatusState  = { data: null, pending: false };
+const diagnosticState     = { data: null, pending: false };
+const alertThresholdsState = { data: null, saving: false };
+
+// 阶段 badge 颜色
+const PHASE_BADGE = {
+  init:     { cls: 'badge idle',    label: '🔵 初始化',  desc: '项目初始化阶段，尚未正式启动' },
+  active:   { cls: 'badge running', label: '🟢 活跃中',  desc: '项目正常推进中' },
+  review:   { cls: 'badge warn',    label: '🟡 评审中',  desc: '当前处于阶段评审，等待确认' },
+  closing:  { cls: 'badge error',   label: '🔴 收尾中',  desc: '项目进入收尾与交付阶段' },
+  archived: { cls: 'badge idle',    label: '⚫ 已归档',  desc: '项目已完成并归档' },
+};
+
+async function loadProjectStatus() {
+  projectStatusState.pending = true;
+  try {
+    const { payload } = await apiFetch('/api/v1/projects/status');
+    projectStatusState.data = payload;
+  } catch (err) {
+    projectStatusState.data = normalizeErrorPayload({ message: err.message || 'network error' });
+  } finally {
+    projectStatusState.pending = false;
+  }
+  renderProjectStatus();
+}
+
+function renderProjectStatus() {
+  const el = document.getElementById('project-status-card-body');
+  if (!el) return;
+  const payload = projectStatusState.data;
+  if (!payload) { el.innerHTML = '<div class="muted">加载中…</div>'; return; }
+  if (!payload.success) {
+    el.innerHTML = `<div class="state-box error">${escapeHtml(payload.error?.code || 'ERROR')}｜${escapeHtml(payload.error?.message || '请求失败')}</div>`;
+    return;
+  }
+  const d = payload.data || {};
+  const phase = (d.phase || d.stage || d.status || 'init').toLowerCase();
+  const meta = PHASE_BADGE[phase] || { cls: 'badge idle', label: escapeHtml(phase), desc: '未知阶段' };
+  const changedAt = d.changedAt || d.updatedAt || d.lastChangedAt || '';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="${meta.cls}" style="font-size:14px;padding:4px 12px">${meta.label}</span>
+      <span style="color:var(--muted);font-size:13px">${meta.desc}</span>
+    </div>
+    ${changedAt ? `<div class="muted" style="font-size:12px;margin-top:6px">上次变更：${escapeHtml(formatDateCN(changedAt))}</div>` : ''}
+    ${d.description ? `<div style="margin-top:6px;font-size:13px">${escapeHtml(d.description)}</div>` : ''}`;
+}
+
+async function loadDiagnostic() {
+  diagnosticState.pending = true;
+  const btn = document.getElementById('btn-run-diagnostic');
+  if (btn) { btn.disabled = true; btn.textContent = '诊断中…'; }
+  const el = document.getElementById('diagnostic-results');
+  if (el) el.innerHTML = '<div class="muted">诊断中…</div>';
+  try {
+    const { payload } = await apiFetch('/api/v1/diagnostic');
+    diagnosticState.data = payload;
+  } catch (err) {
+    diagnosticState.data = normalizeErrorPayload({ message: err.message || 'network error' });
+  } finally {
+    diagnosticState.pending = false;
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 重新诊断'; }
+  }
+  renderDiagnostic();
+}
+
+function renderDiagnostic() {
+  const el = document.getElementById('diagnostic-results');
+  if (!el) return;
+  const payload = diagnosticState.data;
+  if (!payload) { el.innerHTML = '<div class="muted">点击"重新诊断"开始检查</div>'; return; }
+  if (!payload.success) {
+    el.innerHTML = `<div class="state-box error">${escapeHtml(payload.error?.code || 'ERROR')}｜${escapeHtml(payload.error?.message || '请求失败')}</div>`;
+    return;
+  }
+  const checks = Array.isArray(payload.data) ? payload.data
+    : Array.isArray(payload.data?.checks) ? payload.data.checks : [];
+  if (!checks.length) {
+    el.innerHTML = '<div class="empty-box">诊断完成，无检查项数据。</div>';
+    return;
+  }
+  const iconMap = { pass: '✅', fail: '❌', warn: '⚠️', ok: '✅', error: '❌', warning: '⚠️' };
+  const clsMap  = { pass: 'tone-ok', fail: 'tone-error', warn: 'tone-warn', ok: 'tone-ok', error: 'tone-error', warning: 'tone-warn' };
+  el.innerHTML = checks.map(c => {
+    const status = (c.status || 'pass').toLowerCase();
+    const icon = iconMap[status] || '❓';
+    const cls  = clsMap[status] || '';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:16px">${icon}</span>
+        <span style="flex:1;font-size:13px">${escapeHtml(c.name || c.check || c.label || '检查项')}</span>
+        <span class="badge ${cls}" style="font-size:11px">${escapeHtml(status)}</span>
+        ${c.message ? `<span class="muted" style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(c.message)}">${escapeHtml(c.message)}</span>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function loadAlertThresholds() {
+  try {
+    const { payload } = await apiFetch('/api/v1/settings');
+    if (payload?.success) {
+      const thresholds = payload.data?.alertThresholds || {};
+      const ctxInput  = document.getElementById('alert-ctx-threshold');
+      const idleInput = document.getElementById('alert-idle-threshold');
+      const costInput = document.getElementById('alert-cost-threshold');
+      if (ctxInput  && thresholds.contextPressurePct  != null) ctxInput.value  = thresholds.contextPressurePct;
+      if (idleInput && thresholds.agentIdleMinutes    != null) idleInput.value = thresholds.agentIdleMinutes;
+      if (costInput && thresholds.dailyCostUSD        != null) costInput.value = thresholds.dailyCostUSD;
+    }
+  } catch { /* silent, use defaults */ }
+}
+
+async function saveAlertThresholds() {
+  const ctxInput  = document.getElementById('alert-ctx-threshold');
+  const idleInput = document.getElementById('alert-idle-threshold');
+  const costInput = document.getElementById('alert-cost-threshold');
+  const saveBtn   = document.getElementById('btn-save-alert-thresholds');
+  const resultEl  = document.getElementById('alert-thresholds-result');
+
+  const body = {
+    contextPressurePct: parseFloat(ctxInput?.value ?? 80),
+    agentIdleMinutes:   parseFloat(idleInput?.value ?? 120),
+    dailyCostUSD:       parseFloat(costInput?.value ?? 100),
+  };
+
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '保存中…'; }
+  if (resultEl) { resultEl.className = 'state-box loading'; resultEl.textContent = '正在保存…'; resultEl.style.display = ''; }
+
+  try {
+    const { payload } = await apiFetch('/api/v1/settings/alerts', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (payload?.success) {
+      if (resultEl) { resultEl.className = 'state-box success'; resultEl.textContent = '✅ 告警阈值已保存'; }
+      showToast({ type: 'success', message: '告警阈值已更新' });
+    } else {
+      const msg = payload?.error?.message || '保存失败';
+      if (resultEl) { resultEl.className = 'state-box error'; resultEl.textContent = `❌ ${msg}`; }
+      showToast({ type: 'error', message: msg });
+    }
+  } catch (err) {
+    const msg = err.message || '网络错误';
+    if (resultEl) { resultEl.className = 'state-box error'; resultEl.textContent = `❌ ${msg}`; }
+    showToast({ type: 'error', message: msg });
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存阈值设置'; }
+  }
+}
+
 async function loadSettings() {
   settingsState.pending = true;
   const stateEl = document.querySelector('#settings-api-state');
@@ -1605,7 +1784,7 @@ function renderAgents() {
     const lastActiveAt = sd.lastActiveAt || agent.lastActive;
     const emoji = getAgentEmoji(agent.id || agent.name);
     const agentId = agent.id || agent.name || '';
-    const agentName = AGENT_CHINESE_NAMES[agentId] || AGENT_CHINESE_NAMES[agent.name] || agent.name || agentId;
+    const agentName = getRoleDisplayName(agentId) || agent.name || agentId;
     const roleDesc = agent.model ? `使用 ${agent.model}` : agent.workspace ? `工作区: ${agent.workspace}` : agent.description || 'OpenClaw Agent';
     const activeSessions = sd.activeSessions || sd.pendingTaskCount || 0;
     const status = sd.status || agent.status;
@@ -3865,13 +4044,13 @@ function renderWiringStatus() {
 async function loadRouteData(route) {
   switch (route) {
     case 'overview':
-      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadEventLogView(), loadRegistryView()]);
+      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadEventLogView(), loadRegistryView(), loadProjectStatus()]);
       break;
     case 'agents':
       await loadAgents();
       break;
     case 'settings':
-      await Promise.all([loadConfigOverview(), loadSettings(), loadCron(), loadWiringStatus(), loadFeishuWebhookStatus()]);
+      await Promise.all([loadConfigOverview(), loadSettings(), loadCron(), loadWiringStatus(), loadFeishuWebhookStatus(), loadDiagnostic(), loadAlertThresholds()]);
       await updateConnectionHealth();
       break;
     case 'tasks':
@@ -3992,6 +4171,18 @@ document.addEventListener('click', (event) => {
 document.addEventListener('click', (event) => {
   const btn = event.target.closest('#refresh-wiring');
   if (btn) loadWiringStatus();
+});
+
+// Diagnostic re-run
+document.addEventListener('click', (event) => {
+  const btn = event.target.closest('#btn-run-diagnostic');
+  if (btn) loadDiagnostic();
+});
+
+// Alert thresholds save
+document.addEventListener('click', (event) => {
+  const btn = event.target.closest('#btn-save-alert-thresholds');
+  if (btn) saveAlertThresholds();
 });
 
 // ─── Search ───────────────────────────────────────────────────────────────────
@@ -4402,6 +4593,20 @@ async function loadGlobalStatusStrip() {
   } catch {}
 }
 
+// ─── 皮肤包 Settings 初始化 ───────────────────────────────────────────────────
+function initDisplayNameToggle() {
+  const toggle = document.getElementById('display-name-mode-toggle');
+  if (!toggle) return;
+  const current = localStorage.getItem('oc-display-name-mode') || 'external';
+  toggle.value = current;
+  toggle.addEventListener('change', () => {
+    localStorage.setItem('oc-display-name-mode', toggle.value);
+    showToast({ type: 'info', message: toggle.value === 'external' ? '已切换为对外职能名' : '已切换为内部代号' });
+    // 重新渲染 Agents 页面（如果当前在 agents 页）
+    if (state.route === 'agents' && state.agentsData) renderAgents();
+  });
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 const initialRoute = routeFromHash();
 setRoute(initialRoute);
@@ -4410,6 +4615,7 @@ initSessionDetailSidebar();  // Initialize session detail sidebar DOM
 initSearch();
 // legacy inspector sidebar removed
 initOnboardingBanner();
+initDisplayNameToggle();
 initFeishuEmptyState();
 initTheme();
 loadSecurityStatus();

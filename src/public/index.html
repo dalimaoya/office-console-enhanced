@@ -171,6 +171,17 @@
               <div class="kpi-meta" id="kpi-queue-meta">待处理</div>
             </div>
           </div>
+          <!-- 项目阶段卡片（Phase2：项目状态机） -->
+          <section class="panel" id="project-status-panel">
+            <div class="panel-head">
+              <h3>项目阶段 <em>— 状态机</em></h3>
+              <button class="ghost-button" onclick="loadProjectStatus()">刷新</button>
+            </div>
+            <div id="project-status-card-body" class="stack gap-sm">
+              <div class="muted">加载中…</div>
+            </div>
+          </section>
+
           <!-- 需要关注：待办/异常聚合 -->
           <section class="panel" id="action-queue-panel">
             <div class="panel-head">
@@ -524,6 +535,59 @@
               <div class="settings-hint muted" style="margin-top:8px;font-size:12px;">
                 如需启用：在服务器 .env 文件中配置 FEISHU_WEBHOOK_URL，重启服务后生效。
               </div>
+            </div>
+          </section>
+
+          <!-- Phase2：显示名称切换 -->
+          <section class="panel">
+            <div class="panel-head"><h3>显示名称 <em>— 皮肤包</em></h3></div>
+            <div class="settings-card">
+              <div class="settings-card-title">🎭 Agent 显示名称模式</div>
+              <div class="settings-card-desc">选择 Agent 列表中角色名的展示方式：对外职能名（如"前端工程师"）或内部代号（如"伊泽瑞尔"）。</div>
+              <div class="settings-row">
+                <span class="settings-label">名称模式</span>
+                <select id="display-name-mode-toggle" class="select-sm">
+                  <option value="external">对外职能名（项目指挥官、前端工程师…）</option>
+                  <option value="internal">内部代号（提莫、伊泽瑞尔…）</option>
+                </select>
+              </div>
+              <div class="settings-hint muted" style="margin-top:8px;font-size:12px;">设置保存于浏览器本地，刷新页面后自动应用。</div>
+            </div>
+          </section>
+
+          <!-- Phase2：告警阈值配置 -->
+          <section class="panel" id="alert-thresholds-section">
+            <div class="panel-head"><h3>告警阈值配置 <em>— Phase2</em></h3></div>
+            <div class="settings-card">
+              <div class="settings-card-title">⚠️ 自定义告警触发阈值</div>
+              <div class="settings-card-desc">配置触发飞书告警通知的阈值条件。保存后通过 <code>POST /api/v1/settings/alerts</code> 更新后端配置。</div>
+              <div class="settings-row" style="margin-top:12px">
+                <label for="alert-ctx-threshold" class="settings-label">上下文压力告警阈值（%）</label>
+                <input id="alert-ctx-threshold" type="number" min="0" max="100" value="80" class="select-sm" style="width:100px" />
+              </div>
+              <div class="settings-row">
+                <label for="alert-idle-threshold" class="settings-label">Agent 空闲告警阈值（分钟）</label>
+                <input id="alert-idle-threshold" type="number" min="0" value="120" class="select-sm" style="width:100px" />
+              </div>
+              <div class="settings-row">
+                <label for="alert-cost-threshold" class="settings-label">每日费用告警（USD）</label>
+                <input id="alert-cost-threshold" type="number" min="0" step="0.01" value="100" class="select-sm" style="width:100px" />
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+                <button id="btn-save-alert-thresholds" class="primary-button">保存阈值设置</button>
+                <div id="alert-thresholds-result" class="state-box" style="display:none;flex:1"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Phase2：环境诊断 -->
+          <section class="panel" id="diagnostic-section">
+            <div class="panel-head">
+              <h3>环境诊断 <em>— Phase2</em></h3>
+              <button id="btn-run-diagnostic" class="ghost-button">🔄 重新诊断</button>
+            </div>
+            <div id="diagnostic-results" class="stack gap-sm">
+              <div class="muted">点击"重新诊断"开始检查</div>
             </div>
           </section>
 

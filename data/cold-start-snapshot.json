@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-19T16:37:39.244Z",
+  "generatedAt": "2026-03-19T16:42:39.179Z",
   "projectStage": {
     "currentStage": "active",
     "previousStage": null,
@@ -16,6 +16,12 @@
     }
   ],
   "recentEvents": [
+    {
+      "ts": "2026-03-19T16:37:39.168Z",
+      "event_type": "system.start",
+      "source_role": "system-gateway",
+      "description": "office-dashboard-adapter 服务启动"
+    },
     {
       "ts": "2026-03-19T16:34:03.001Z",
       "event_type": "system.start",
@@ -39,12 +45,6 @@
       "event_type": "object.status_changed",
       "source_role": "orchestrator-teemo",
       "description": "项目阶段转移: init → active (二期启动)"
-    },
-    {
-      "ts": "2026-03-19T16:29:19.535Z",
-      "event_type": "system.start",
-      "source_role": "system-gateway",
-      "description": "office-dashboard-adapter 服务启动"
     }
   ],
   "agentSummary": [
@@ -81,7 +81,7 @@
     {
       "id": "agent-frontend-ezreal",
       "name": "伊泽瑞尔",
-      "status": "blocked",
+      "status": "working",
       "currentTask": "Iter-1 前端 SSE 接入任务记录"
     },
     {
@@ -146,11 +146,6 @@
     }
   ],
   "blockers": [
-    {
-      "source": "agent",
-      "id": "agent-frontend-ezreal",
-      "description": "Iter-1 前端 SSE 接入任务记录"
-    },
     {
       "source": "agent",
       "id": "agent-ui-lux",
