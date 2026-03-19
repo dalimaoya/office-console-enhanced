@@ -3223,11 +3223,11 @@ function renderContextPressure() {
   }
 
   el.innerHTML = items.map((item) => {
-    const used    = item.usedContext    ?? item.used    ?? 0;
-    const max     = item.maxContext     ?? item.max     ?? 1;
-    const level   = item.pressureLevel ?? item.level   ?? 'normal';
-    const pct     = Math.min(100, Math.round((used / max) * 100));
-    const barCls  = level === 'critical' ? 'critical' : level === 'warning' ? 'warning' : 'normal';
+    const used    = item.contextUsedEstimate ?? item.usedContext ?? item.used ?? 0;
+    const max     = item.contextWindowMax ?? item.maxContext ?? item.max ?? 1;
+    const level   = item.level ?? item.pressureLevel ?? 'normal';
+    const ratio   = item.pressureRatio ?? (max > 0 ? used / max : 0);
+    const pct     = Math.min(100, Math.round(ratio * 100));
     return `
       <div class="context-pressure-row">
         <div class="context-pressure-header">
