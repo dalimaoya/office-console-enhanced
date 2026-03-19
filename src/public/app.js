@@ -2995,14 +2995,20 @@ function renderUsage() {
   }
 
   const maxTokens = Math.max(...byAgent.map((a) => a.tokens || 0), 1);
+  // 从 usageState.byAgent 拿 displayName 做中文名映射
+  const displayNameMap = {};
+  const byAgentItems = Array.isArray(usageState.byAgent?.data) ? usageState.byAgent.data : [];
+  byAgentItems.forEach((item) => { if (item.agentId) displayNameMap[item.agentId] = item.displayName || item.agentId; });
+
   agentsEl.innerHTML = byAgent
     .slice()
     .sort((a, b) => (b.tokens || 0) - (a.tokens || 0))
     .map((agent) => {
       const pct = ((agent.tokens || 0) / maxTokens * 100).toFixed(1);
+      const label = displayNameMap[agent.agentId] || agent.agentId || '未知';
       return `
         <div class="usage-agent-row">
-          <span class="usage-agent-name"><span class="muted">角色：</span>${escapeHtml(agent.agentId || '未知')}</span>
+          <span class="usage-agent-name"><span class="muted">角色：</span>${escapeHtml(label)}</span>
           <div class="usage-bar-wrap"><div class="usage-bar-fill" style="width:${pct}%"></div></div>
           <span class="usage-tokens-text"><span class="muted">Token 用量：</span>${fmtTokens(agent.tokens || 0)}</span>
           <span class="usage-cost-text"><span class="muted">费用：</span>${fmtCost(agent.cost)}</span>
