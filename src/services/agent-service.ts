@@ -24,6 +24,7 @@ import { getFileReader } from '../data/file-reader.js';
 import { env } from '../config/env.js';
 import { log } from '../utils/logger.js';
 import { eventLogService } from './event-log-service.js';
+import { resolveAgentDisplayName } from '../utils/agent-display-name.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
 const TASKS_DIR = '/root/.openclaw/workspace/projects/office-console-enhanced/tasks';
@@ -214,7 +215,7 @@ export class AgentService {
 
         const lastActiveMs = await fileReader.getAgentLastActiveMs(agent.id).catch(() => null);
         const workspaceExists = await checkWorkspaceExists(agent.id);
-        const identityName = agent.identity?.name ?? agent.name ?? agent.id;
+        const displayName = resolveAgentDisplayName(agent.id, agent.identity?.name, agent.name);
         const roleTag = agent.id.split('-').slice(-1)[0] ?? 'agent';
 
         const { status, statusDetail } = await deriveAgentStatus(
@@ -226,7 +227,7 @@ export class AgentService {
 
         const item = {
           id: agent.id,
-          name: identityName,
+          name: displayName,
           status,
           lastActive: lastActiveMs ? new Date(lastActiveMs).toISOString() : null,
           summaryTags: [roleTag, status],
@@ -281,7 +282,7 @@ export class AgentService {
 
         const item = {
           id: agent.id,
-          name: agent.identity?.name ?? agent.name ?? agent.id,
+          name: resolveAgentDisplayName(agent.id, agent.identity?.name, agent.name),
           status,
           lastActive: lastActiveMs ? new Date(lastActiveMs).toISOString() : null,
           summaryTags: [agent.id.split('-').slice(-1)[0] ?? 'agent', status],

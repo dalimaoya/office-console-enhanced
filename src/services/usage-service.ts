@@ -7,6 +7,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getFileReader } from '../data/file-reader.js';
+import { resolveAgentDisplayName } from '../utils/agent-display-name.js';
 import { log } from '../utils/logger.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
@@ -221,7 +222,7 @@ export async function getUsageByAgent(period = 'today'): Promise<{
   await Promise.all(
     agentConfigs.map(async (agent) => {
       const sessionData = await readAgentSessionData(agent.id, period);
-      const displayName = agent.identity?.name ?? agent.name ?? agent.id;
+      const displayName = resolveAgentDisplayName(agent.id, agent.identity?.name, agent.name);
       const model = agent.model?.primary ?? 'unknown';
 
       results.push({
