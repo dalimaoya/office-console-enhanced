@@ -6,6 +6,7 @@ import { initGatewayWsClient } from './data/gateway-ws-client.js';
 import { initSseHub, getSseHub } from './data/sse-hub.js';
 import { initFileWatcher } from './data/file-watcher.js';
 import { initFeishuNotifier, getFeishuNotifier } from './services/feishu-notifier.js';
+import { appendTimelineEvent } from './services/timeline-service.js';
 
 // ── Iter-6：初始化飞书通知服务 ───────────────────────────────────────────────
 initFeishuNotifier();
@@ -102,6 +103,15 @@ if (env.useFileReader) {
 
 const app = createApp();
 app.listen(env.port, env.host, () => {
+  void appendTimelineEvent({
+    type: 'system_start',
+    summary: '服务启动',
+    data: {
+      host: env.host,
+      port: env.port,
+    },
+  });
+
   log('info', 'server_started', {
     host: env.host,
     port: env.port,

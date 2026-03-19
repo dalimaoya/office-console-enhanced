@@ -1,0 +1,12 @@
+[
+  {
+    "id": "1773910255578-wrygt7",
+    "ts": "2026-03-19T08:50:55.578Z",
+    "type": "warn",
+    "title": "预算提醒",
+    "body": "今日成本接近阈值",
+    "source": "system",
+    "status": "snoozed",
+    "snoozed_until": "2026-03-19T09:51:02.947Z"
+  }
+]

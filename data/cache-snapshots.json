@@ -7,11 +7,11 @@
       "gateway": {
         "status": "ok"
       },
-      "checkedAt": "2026-03-18T19:06:00.660Z"
+      "checkedAt": "2026-03-19T09:52:09.706Z"
     },
-    "fetchedAt": 1773860760658,
-    "expiresAt": 1773860775658,
-    "staleUntil": 1773860820658
+    "fetchedAt": 1773913929628,
+    "expiresAt": 1773913944628,
+    "staleUntil": 1773913989628
   },
   "templates.list": {
     "value": {
@@ -54,9 +54,9 @@
       ],
       "total": 5
     },
-    "fetchedAt": 1773858827053,
-    "expiresAt": 1773859127053,
-    "staleUntil": 1773860627053
+    "fetchedAt": 1773914848632,
+    "expiresAt": 1773915148632,
+    "staleUntil": 1773916648632
   },
   "agents": {
     "value": {
@@ -65,14 +65,14 @@
           "id": "main",
           "name": "Azir",
           "status": "idle",
-          "lastActive": "2026-03-18T16:53:25.702Z",
+          "lastActive": "2026-03-19T08:48:51.885Z",
           "summaryTags": [
             "main",
             "idle"
           ],
           "statusDetail": {
             "state": "idle",
-            "lastActiveAt": "2026-03-18T16:53:25.702Z",
+            "lastActiveAt": "2026-03-19T08:48:51.885Z",
             "currentTask": null,
             "pendingTaskCount": 0
           }
@@ -80,15 +80,15 @@
         {
           "id": "agent-aioffice-jayce",
           "name": "杰斯",
-          "status": "working",
-          "lastActive": "2026-03-18T18:37:21.454Z",
+          "status": "idle",
+          "lastActive": "2026-03-19T08:30:44.305Z",
           "summaryTags": [
             "jayce",
-            "working"
+            "idle"
           ],
           "statusDetail": {
-            "state": "working",
-            "lastActiveAt": "2026-03-18T18:37:21.454Z",
+            "state": "idle",
+            "lastActiveAt": "2026-03-19T08:30:44.305Z",
             "currentTask": null,
             "pendingTaskCount": 0
           }
@@ -96,47 +96,47 @@
         {
           "id": "agent-architect-jax",
           "name": "贾克斯",
-          "status": "backlog",
-          "lastActive": "2026-03-18T18:11:42.136Z",
+          "status": "idle",
+          "lastActive": "2026-03-19T08:28:52.601Z",
           "summaryTags": [
             "jax",
-            "backlog"
+            "idle"
           ],
           "statusDetail": {
-            "state": "backlog",
-            "lastActiveAt": "2026-03-18T18:11:42.136Z",
-            "currentTask": "一键安装部署脚本",
-            "pendingTaskCount": 1
+            "state": "idle",
+            "lastActiveAt": "2026-03-19T08:28:52.601Z",
+            "currentTask": null,
+            "pendingTaskCount": 0
           }
         },
         {
           "id": "agent-backend-leona",
           "name": "雷欧娜",
-          "status": "backlog",
-          "lastActive": "2026-03-18T18:31:24.146Z",
+          "status": "blocked",
+          "lastActive": "2026-03-19T08:51:35.954Z",
           "summaryTags": [
             "leona",
-            "backlog"
+            "blocked"
           ],
           "statusDetail": {
-            "state": "backlog",
-            "lastActiveAt": "2026-03-18T18:31:24.146Z",
-            "currentTask": "迭代2 后端任务（Leona）",
-            "pendingTaskCount": 6
+            "state": "blocked",
+            "lastActiveAt": "2026-03-19T08:51:35.954Z",
+            "currentTask": "Iter-1 后端数据层重构任务记录",
+            "pendingTaskCount": 0
           }
         },
         {
           "id": "agent-codingqa-galio",
           "name": "加里奥",
-          "status": "idle",
-          "lastActive": "2026-03-18T18:29:42.216Z",
+          "status": "working",
+          "lastActive": "2026-03-19T08:56:30.045Z",
           "summaryTags": [
             "galio",
-            "idle"
+            "working"
           ],
           "statusDetail": {
-            "state": "idle",
-            "lastActiveAt": "2026-03-18T18:29:42.216Z",
+            "state": "working",
+            "lastActiveAt": "2026-03-19T08:56:30.045Z",
             "currentTask": null,
             "pendingTaskCount": 0
           }
@@ -144,31 +144,31 @@
         {
           "id": "agent-frontend-ezreal",
           "name": "伊泽瑞尔",
-          "status": "backlog",
-          "lastActive": "2026-03-18T18:24:56.138Z",
+          "status": "working",
+          "lastActive": "2026-03-19T08:56:15.039Z",
           "summaryTags": [
             "ezreal",
-            "backlog"
+            "working"
           ],
           "statusDetail": {
-            "state": "backlog",
-            "lastActiveAt": "2026-03-18T18:24:56.138Z",
-            "currentTask": "迭代2 前端任务-B：待办聚合 + Cron + 接线诊断 UI（Ezreal，依赖 Leona 后端）",
-            "pendingTaskCount": 3
+            "state": "working",
+            "lastActiveAt": "2026-03-19T08:56:15.039Z",
+            "currentTask": "Iter-1 前端 SSE 接入任务记录",
+            "pendingTaskCount": 1
           }
         },
         {
           "id": "agent-orchestrator-teemo",
           "name": "提莫",
-          "status": "idle",
-          "lastActive": "2026-03-18T18:32:03.390Z",
+          "status": "working",
+          "lastActive": "2026-03-19T08:56:23.641Z",
           "summaryTags": [
             "teemo",
-            "idle"
+            "working"
           ],
           "statusDetail": {
-            "state": "idle",
-            "lastActiveAt": "2026-03-18T18:32:03.390Z",
+            "state": "working",
+            "lastActiveAt": "2026-03-19T08:56:23.641Z",
             "currentTask": null,
             "pendingTaskCount": 0
           }
@@ -177,14 +177,14 @@
           "id": "agent-product-ekko",
           "name": "艾克",
           "status": "idle",
-          "lastActive": "2026-03-18T18:14:47.082Z",
+          "lastActive": "2026-03-19T08:28:33.006Z",
           "summaryTags": [
             "ekko",
             "idle"
           ],
           "statusDetail": {
             "state": "idle",
-            "lastActiveAt": "2026-03-18T18:14:47.082Z",
+            "lastActiveAt": "2026-03-19T08:28:33.006Z",
             "currentTask": null,
             "pendingTaskCount": 0
           }
@@ -192,17 +192,17 @@
         {
           "id": "agent-ui-lux",
           "name": "拉克丝",
-          "status": "backlog",
-          "lastActive": "2026-03-18T18:30:21.607Z",
+          "status": "blocked",
+          "lastActive": "2026-03-19T08:30:02.982Z",
           "summaryTags": [
             "lux",
-            "backlog"
+            "blocked"
           ],
           "statusDetail": {
-            "state": "backlog",
-            "lastActiveAt": "2026-03-18T18:30:21.607Z",
-            "currentTask": "P0-4 设计：Design Token 系统（间距/字号/圆角 token 化）",
-            "pendingTaskCount": 1
+            "state": "blocked",
+            "lastActiveAt": "2026-03-19T08:30:02.982Z",
+            "currentTask": "CC 借鉴设计系统升级（Lux）",
+            "pendingTaskCount": 0
           }
         },
         {
@@ -256,9 +256,9 @@
       ],
       "total": 12
     },
-    "fetchedAt": 1773859047446,
-    "expiresAt": 1773859107446,
-    "staleUntil": 1773859647446
+    "fetchedAt": 1773910747769,
+    "expiresAt": 1773910807769,
+    "staleUntil": 1773911347769
   },
   "dashboard": {
     "value": {
@@ -266,20 +266,20 @@
         "status": "warning",
         "uptime": "unknown",
         "version": "OpenClaw vunknown",
-        "lastCheck": "2026-03-18T19:08:44.870Z",
+        "lastCheck": "2026-03-19T09:52:10.623Z",
         "performance": {
-          "avgResponseMs": 477,
+          "avgResponseMs": 479,
           "health": "healthy"
         }
       },
       "agents": {
         "total": 12,
-        "active": 9,
+        "active": 8,
         "statusBreakdown": {
-          "working": 4,
-          "idle": 5,
-          "blocked": 0,
-          "backlog": 2,
+          "working": 1,
+          "idle": 7,
+          "blocked": 3,
+          "backlog": 0,
           "error": 0,
           "offline": 1,
           "unknown": 0
@@ -287,7 +287,7 @@
         "quickStats": [
           {
             "name": "Task Success Rate",
-            "value": "75%",
+            "value": "67%",
             "trend": "stable"
           },
           {
@@ -302,8 +302,8 @@
         "recentActivity": []
       },
       "usage": {
-        "todayTokens": 45051779,
-        "todayCost": 34.987438,
+        "todayTokens": 32973804,
+        "todayCost": 40.149429,
         "period": "today"
       },
       "alerts": [
@@ -312,15 +312,15 @@
           "type": "agent_health",
           "message": "Agent '卡牌大师' 最近活跃时间过久，当前可能离线",
           "suggestion": "检查对应工作区运行情况",
-          "timestamp": "2026-03-18T19:08:44.869Z"
+          "timestamp": "2026-03-19T09:52:10.623Z"
         }
       ],
       "readinessScore": {
-        "overall": 60,
+        "overall": 65,
         "dimensions": [
           {
             "name": "observability",
-            "score": 83,
+            "score": 100,
             "items": [
               {
                 "check": "Gateway 连接",
@@ -329,8 +329,8 @@
               },
               {
                 "check": "SSE 客户端数",
-                "status": "warn",
-                "detail": "暂无 SSE 客户端连接"
+                "status": "pass",
+                "detail": "当前有 1 个 SSE 客户端"
               },
               {
                 "check": "审计日志可写",
@@ -393,11 +393,11 @@
             ]
           }
         ],
-        "computedAt": "2026-03-18T19:08:44.869Z"
+        "computedAt": "2026-03-19T09:52:10.623Z"
       }
     },
-    "fetchedAt": 1773860923840,
-    "expiresAt": 1773860953840,
-    "staleUntil": 1773861523840
+    "fetchedAt": 1773913929597,
+    "expiresAt": 1773913959597,
+    "staleUntil": 1773914529597
   }
 }

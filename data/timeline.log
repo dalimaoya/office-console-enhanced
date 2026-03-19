@@ -1,0 +1,12 @@
+{"ts":"2026-03-19T08:41:03.302Z","type":"system_start","summary":"服务启动","data":{"host":"0.0.0.0","port":3014}}
+{"ts":"2026-03-19T08:41:40.830Z","type":"task_created","taskId":"2026-03-19-1773909700829-p0时间线验证任务.md","summary":"创建任务：P0时间线验证任务","data":{"filename":"2026-03-19-1773909700829-p0时间线验证任务.md","title":"P0时间线验证任务","owner":"backend-leona","priority":"high"}}
+{"ts":"2026-03-19T08:41:40.871Z","type":"task_updated","taskId":"2026-03-19-1773909700829-p0时间线验证任务.md","summary":"任务 2026-03-19-1773909700829-p0时间线验证任务.md 状态更新为 done","data":{"filename":"2026-03-19-1773909700829-p0时间线验证任务.md","status":"done"}}
+{"ts":"2026-03-19T08:42:04.853Z","type":"system_start","summary":"服务启动","data":{"host":"0.0.0.0","port":3014}}
+{"ts":"2026-03-19T08:42:18.495Z","type":"task_created","taskId":"2026-03-19-1773909738494-p0审计验证任务.md","summary":"创建任务：P0审计验证任务","data":{"filename":"2026-03-19-1773909738494-p0审计验证任务.md","title":"P0审计验证任务","owner":"backend-leona","priority":"high"}}
+{"ts":"2026-03-19T08:42:18.535Z","type":"task_updated","taskId":"2026-03-19-1773909738494-p0审计验证任务.md","summary":"任务 2026-03-19-1773909738494-p0审计验证任务.md 状态更新为 done","data":{"filename":"2026-03-19-1773909738494-p0审计验证任务.md","status":"done"}}
+{"ts":"2026-03-19T08:43:03.168Z","type":"system_start","summary":"服务启动","data":{"host":"0.0.0.0","port":3014}}
+{"ts":"2026-03-19T08:43:17.093Z","type":"task_created","taskId":"2026-03-19-1773909797092-p0最终验证任务.md","summary":"创建任务：P0最终验证任务","data":{"filename":"2026-03-19-1773909797092-p0最终验证任务.md","title":"P0最终验证任务","owner":"backend-leona","priority":"low"}}
+{"ts":"2026-03-19T08:43:17.134Z","type":"task_updated","taskId":"2026-03-19-1773909797092-p0最终验证任务.md","summary":"任务 2026-03-19-1773909797092-p0最终验证任务.md 状态更新为 done","data":{"filename":"2026-03-19-1773909797092-p0最终验证任务.md","status":"done"}}
+{"ts":"2026-03-19T08:43:26.851Z","type":"system_start","summary":"服务启动","data":{"host":"127.0.0.1","port":3015}}
+{"ts":"2026-03-19T08:50:41.122Z","type":"system_start","summary":"服务启动","data":{"host":"0.0.0.0","port":3014}}
+{"ts":"2026-03-19T09:09:57.795Z","type":"system_start","summary":"服务启动","data":{"host":"0.0.0.0","port":3014}}

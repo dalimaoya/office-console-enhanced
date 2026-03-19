@@ -93,6 +93,13 @@ export const env = {
   dryRunDefault: (process.env.OC_DRY_RUN_DEFAULT ?? 'true') !== 'false',
 
   /**
+   * 是否要求高风险操作显式确认（REQUIRE_DRYRUN_CONFIRM）
+   * `true` 时，POST/PUT/PATCH/DELETE 若未携带 X-Confirm: true，返回 dry-run 响应
+   * 默认：false
+   */
+  requireDryrunConfirm: (process.env.REQUIRE_DRYRUN_CONFIRM ?? 'false') === 'true',
+
+  /**
    * 允许写入的 IP 白名单（OC_ALLOWED_WRITE_ORIGINS）
    * 只读模式下，哪些来源的请求可以绕过只读限制
    * 默认仅允许 localhost（127.0.0.1、::1）

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { env } from '../config/env.js';
 import { auditService } from '../services/audit-service.js';
-import { ReadonlyModeError, TokenAuthError, IpNotAllowedError, DryRunRequiredError } from '../utils/security-errors.js';
+import { ReadonlyModeError, TokenAuthError } from '../utils/security-errors.js';
 
 /**
  * Token 鉴权中间件
@@ -158,6 +158,17 @@ export function writeGate(req: Request, res: Response, next: NextFunction) {
   // 仅为写操作应用 writeGate（GET/HEAD/OPTIONS 跳过）
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next();
+  }
+
+  if (env.requireDryrunConfirm) {
+    const confirmHeader = String(req.headers['x-confirm'] ?? '').toLowerCase();
+    if (confirmHeader !== 'true') {
+      return res.status(200).json({
+        dry_run: true,
+        message: '此为模拟请求，添加 X-Confirm: true 以确认执行',
+        payload: req.body ?? null,
+      });
+    }
   }
 
   // 解析 dry-run 参数

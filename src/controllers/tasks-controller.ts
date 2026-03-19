@@ -8,6 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { stat, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { sendSuccess, sendError } from '../utils/responses.js';
+import { appendTimelineEvent } from '../services/timeline-service.js';
 
 const TASKS_DIR = '/root/.openclaw/workspace/projects/office-console-enhanced/tasks';
 
@@ -43,13 +44,21 @@ interface TaskItem {
   filename: string;
   mtime: string;
   size: number;
-  status: 'active' | 'blocked';
+  status: 'active' | 'blocked' | 'done';
   checklist?: ChecklistItem[];
   checklistProgress?: number | null;
 }
 
-function inferStatus(filename: string): 'active' | 'blocked' {
-  return filename.toLowerCase().includes('blocked') ? 'blocked' : 'active';
+function isHistoricalCompletedTask(filename: string, content: string): boolean {
+  const text = `${filename}\n${content}`.toLowerCase();
+  return /done|completed|review|已完成|已交付|验收|复盘/.test(text);
+}
+
+function inferStatus(filename: string, content: string): 'active' | 'blocked' | 'done' {
+  const text = `${filename}\n${content}`.toLowerCase();
+  if (/blocked|阻塞/.test(text)) return 'blocked';
+  if (/done|completed|review|已完成|已交付|验收|复盘/.test(text)) return 'done';
+  return 'active';
 }
 
 function filenameToName(filename: string): string {
@@ -82,13 +91,19 @@ export async function getTasks(req: Request, res: Response, next: NextFunction) 
           stat(filePath),
           readFile(filePath, 'utf-8').catch(() => ''),
         ]);
+        if (isHistoricalCompletedTask(filename, content)) {
+          continue;
+        }
+
         const { checklist, checklistProgress } = parseChecklist(content);
         // Infer status from file content (- 状态: done/blocked/etc)
-        let fileStatus: 'active' | 'blocked' = inferStatus(filename);
-        const statusMatch = content.match(/^[-*]\s*(?:状态|status)[：:]\s*(.+)/im);
+        let fileStatus: 'active' | 'blocked' | 'done' = inferStatus(filename, content);
+        const statusMatch = content.match(/^[-*]\s*\*\*(?:状态|status)\*\*[：:]\s*(.+)|^[-*]\s*(?:状态|status)[：:]\s*(.+)/im);
         if (statusMatch) {
-          const s2 = statusMatch[1].trim().toLowerCase();
-          if (s2 === 'blocked') fileStatus = 'blocked';
+          const s2 = (statusMatch[1] ?? statusMatch[2] ?? '').trim().toLowerCase();
+          if (/blocked|阻塞/.test(s2)) fileStatus = 'blocked';
+          else if (/done|completed|review|已完成|已交付|验收|复盘/.test(s2)) fileStatus = 'done';
+          else if (/active|pending|in.progress|进行中|待/.test(s2)) fileStatus = 'active';
         }
         items.push({
           name: filenameToName(filename),
@@ -119,7 +134,7 @@ export async function updateTaskStatus(req: Request, res: Response, next: NextFu
     if (process.env.READONLY_MODE === 'true') {
       return res.status(403).json({ success: false, message: '当前是只读模式，操作被禁止' });
     }
-    const { filename } = req.params;
+    const filename = String(req.params.filename ?? '');
     const { status } = req.body as { status: string };
     if (!['active', 'blocked', 'done'].includes(status)) {
       return res.status(400).json({ success: false, message: '状态值无效，允许: active, blocked, done' });
@@ -135,6 +150,12 @@ export async function updateTaskStatus(req: Request, res: Response, next: NextFu
     const updated = content.trimEnd() + `\n\n<!-- status:${status} updated:${new Date().toISOString()} -->\n`;
     const { writeFile } = await import('node:fs/promises');
     await writeFile(filePath, updated, 'utf8');
+    await appendTimelineEvent({
+      type: 'task_updated',
+      taskId: filename,
+      summary: `任务 ${filename} 状态更新为 ${status}`,
+      data: { filename, status },
+    });
     return sendSuccess(res, { filename, status });
   } catch (error) {
     next(error);
@@ -157,6 +178,12 @@ export async function createTask(req: Request, res: Response, next: NextFunction
     const content = `# ${title}\n\n- 创建时间：${cstNow}（北京时间）\n- 负责人：${owner ?? '未指定'}\n- 优先级：${priority}\n- 状态：active\n`;
     const { writeFile } = await import('node:fs/promises');
     await writeFile(join(TASKS_DIR, filename), content, 'utf8');
+    await appendTimelineEvent({
+      type: 'task_created',
+      taskId: filename,
+      summary: `创建任务：${title}`,
+      data: { filename, title, owner: owner ?? '未指定', priority },
+    });
     return sendSuccess(res, { filename, title });
   } catch (error) {
     next(error);

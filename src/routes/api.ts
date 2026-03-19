@@ -3,11 +3,12 @@ import { getAgents } from '../controllers/agent-controller.js';
 import { getDashboard } from '../controllers/dashboard-controller.js';
 import { getHealth } from '../controllers/health-controller.js';
 import { getHealthz } from '../controllers/healthz-controller.js';
+import { getStatus } from '../controllers/status-controller.js';
 import { applyTemplate, getTemplate, getTemplates } from '../controllers/template-controller.js';
 import { getEvents, getEventsStatus } from '../controllers/events-controller.js';
 import { securityMiddleware } from '../middleware/security.js';
 import { getTasks, updateTaskStatus, createTask } from '../controllers/tasks-controller.js';
-import { getDocs } from '../controllers/docs-controller.js';
+import { getDocs, patchDoc } from '../controllers/docs-controller.js';
 import { getCollaboration, getSessions, getSessionById, getMessages, getCollaborationGraphHandler } from '../controllers/collaboration-controller.js';
 import { getUsage, byAgent, byModel, contextPressure } from '../controllers/usage-controller.js';
 import { searchAll } from '../controllers/search-controller.js';
@@ -15,11 +16,25 @@ import { getMemory, getMemoryHealthHandler } from '../controllers/memory-control
 import { getSettings, wiringStatus, connectionHealth, securitySummary, updateStatus } from '../controllers/settings-controller.js';
 import { getActionQueueHandler, ackItem } from '../controllers/action-queue-controller.js';
 import { getCronHandler } from '../controllers/cron-controller.js';
+import { getTimeline } from '../controllers/timeline-controller.js';
+import {
+  ackNotification,
+  createNotificationHandler,
+  getNotifications,
+  snoozeNotificationHandler,
+} from '../controllers/notifications-controller.js';
+import {
+  getBudgetPolicyHandler,
+  getBudgetStatusHandler,
+  putBudgetPolicyHandler,
+} from '../controllers/budget-controller.js';
+import { exportSnapshot, importSnapshot } from '../controllers/snapshot-controller.js';
 
 export const apiRouter = Router();
 
 // 新的健康端点（永远返回200，无需鉴权）
 apiRouter.get('/healthz', getHealthz);
+apiRouter.get('/status', getStatus);
 
 // 所有其他路由应用 token 鉴权（如果配置了 token）
 apiRouter.use(...securityMiddleware);
@@ -51,9 +66,20 @@ apiRouter.get('/tasks', getTasks);
 apiRouter.patch('/tasks/:filename/status', updateTaskStatus);
 apiRouter.post('/tasks', createTask);
 apiRouter.get('/docs', getDocs);
+apiRouter.patch('/docs', patchDoc);
 
 // Iter-5 新增：Collaboration / Usage / Memory（只读）
 apiRouter.get('/collaboration', getCollaboration);
+apiRouter.get('/timeline', getTimeline);
+apiRouter.get('/notifications', getNotifications);
+apiRouter.post('/notifications', createNotificationHandler);
+apiRouter.post('/notifications/:id/ack', ackNotification);
+apiRouter.post('/notifications/:id/snooze', snoozeNotificationHandler);
+apiRouter.get('/budget/policy', getBudgetPolicyHandler);
+apiRouter.put('/budget/policy', putBudgetPolicyHandler);
+apiRouter.get('/budget/status', getBudgetStatusHandler);
+apiRouter.get('/snapshot/export', exportSnapshot);
+apiRouter.post('/snapshot/import', importSnapshot);
 
 // P1 CC借鉴：协作流向图
 apiRouter.get('/collaboration/graph', getCollaborationGraphHandler);

@@ -2,6 +2,9 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>办公增强控制台</title>
     <link rel="stylesheet" href="/assets/style.css" />
@@ -32,6 +35,10 @@
             <span class="nav-icon">📋</span>
             <span class="nav-label">任务</span>
           </button>
+          <button class="nav-link" data-route="timeline">
+            <span class="nav-icon">🕘</span>
+            <span class="nav-label">时间线</span>
+          </button>
           <button class="nav-link" data-route="usage">
             <span class="nav-icon">📊</span>
             <span class="nav-label">用量</span>
@@ -52,12 +59,51 @@
       </aside>
 
       <main class="main">
+        <div class="onboarding-banner" id="onboarding-banner" role="banner" aria-label="使用引导">
+          <div class="onboarding-banner__steps">
+            <span class="onboarding-banner__label">快速上手：</span>
+            <ol class="onboarding-banner__list">
+              <li>① 查看实时 Agent 状态</li>
+              <li>→</li>
+              <li>② 在飞书接收任务通知</li>
+              <li>→</li>
+              <li>③ 在任务页管理工作队列</li>
+            </ol>
+          </div>
+          <button class="onboarding-banner__close" id="onboarding-banner-close" aria-label="关闭引导">×</button>
+        </div>
+
         <header class="topbar">
           <div>
             <p class="eyebrow" id="topbar-eyebrow">8 大功能分区已就绪</p>
             <h2 id="page-title">总览</h2>
           </div>
           <div class="topbar-status">
+            <div class="notification-bell-wrap">
+              <button class="notification-bell" id="notification-bell-btn" title="通知中心">
+                🔔
+                <span class="notification-badge" id="notification-badge" style="display:none">0</span>
+              </button>
+              <div class="notification-panel" id="notification-panel" style="display:none">
+                <div class="notification-panel-header">
+                  <span>通知中心</span>
+                  <button class="text-btn" onclick="ackAllNotifications()">全部已读</button>
+                </div>
+                <div id="notification-list" class="notification-list">
+                  <div class="muted" style="padding:16px;text-align:center">暂无通知</div>
+                </div>
+              </div>
+            </div>
+            <button class="theme-toggle-btn" id="theme-toggle-btn" title="切换明暗主题">🌓</button>
+            <div class="status-strip" id="status-strip">
+              <span class="status-strip-item" id="strip-connection" title="服务连接">🟢 已连接</span>
+              <span class="status-strip-sep">·</span>
+              <span class="status-strip-item" id="strip-agents" title="Agent状态">— Agent</span>
+              <span class="status-strip-sep">·</span>
+              <span class="status-strip-item" id="strip-security" title="安全模式">🔒 只读</span>
+              <span class="status-strip-sep">·</span>
+              <span class="status-strip-item" id="strip-version" title="版本">v—</span>
+            </div>
             <button id="search-trigger" class="search-trigger-btn" title="搜索（Cmd+K）">
               <span>🔍</span>
               <span>搜索 agent/任务/会话...</span>
@@ -79,10 +125,23 @@
 
         <!-- ── 总览（Overview）：迁移自 Dashboard ── -->
         <section id="overview-page" class="page active">
+          <div class="page-subtitle">最适合：快速了解当前 AI 团队整体状态</div>
+          <div class="hero-stage"><div class="hero-title">办公增强控制台</div><div class="hero-subtitle">OpenClaw 多智能体工作台 · 实时运行状态</div></div>
+          <div class="connection-health-card" id="connection-health-card" style="display:none">
+            <div class="health-card-icon">⚠️</div>
+            <div class="health-card-body">
+              <div class="health-card-title" id="health-card-title">部分集成未连接</div>
+              <div class="health-card-desc" id="health-card-desc">飞书通知未配置，连接后可接收 Agent 工作通知</div>
+            </div>
+            <button type="button" class="health-card-action" id="connection-health-action-btn" onclick="goToSettings()">去配置 →</button>
+          </div>
           <!-- 系统状态摘要行 -->
           <div class="status-headline" id="overview-status-headline">
             <span class="badge running" id="system-status-badge">系统检查中…</span>
             <span class="muted" id="system-status-meta" style="font-size:var(--text-xs)"></span>
+          </div>
+          <div class="snapshot-actions">
+            <button class="secondary-button" onclick="exportSnapshot()">📥 导出快照</button>
           </div>
           <!-- KPI 网格 -->
           <div class="kpi-grid" id="overview-kpi-grid" style="margin-bottom:var(--space-lg)">
@@ -147,23 +206,21 @@
 
         <!-- ── Agent 状态（Agents）── -->
         <section id="agents-page" class="page">
+          <div class="page-subtitle">最适合：查看哪些 Agent 正在工作、空闲或阻塞</div>
           <div id="agents-state" class="state-box loading">Agent 列表加载中…</div>
           <div id="agents-zones-container">
-            <!-- 动态填充 -->
-            <!--
             <div class="agent-zone" id="agents-working-zone">
-              <div class="agent-zone-title">🟢 活跃中 (N)</div>
+              <div class="agent-zone-title">🟢 活跃中 (0)</div>
               <div class="agent-grid" id="agents-working-grid"></div>
             </div>
             <div class="agent-zone" id="agents-idle-zone">
-              <div class="agent-zone-title">⚪ 空闲 (N)</div>
+              <div class="agent-zone-title">⚪ 空闲 (0)</div>
               <div class="agent-grid" id="agents-idle-grid"></div>
             </div>
             <div class="agent-zone" id="agents-blocked-zone" style="display:none">
-              <div class="agent-zone-title">🔴 阻塞 (N)</div>
+              <div class="agent-zone-title">🔴 阻塞 (0)</div>
               <div class="agent-grid" id="agents-blocked-grid"></div>
             </div>
-            -->
           </div>
           <!-- 保留原有代理列表作为后备 -->
           <div class="panel" style="display:none">
@@ -177,6 +234,7 @@
 
         <!-- ── 协作（Collaboration）── -->
         <section id="collaboration-page" class="page">
+          <div class="page-subtitle">最适合：查看多 Agent 任务传递与会话接力状态</div>
           <div id="collab-state" class="state-box loading">协作会话加载中…</div>
           <div class="panel">
             <div class="panel-head">
@@ -189,6 +247,7 @@
 
         <!-- ── 任务（Tasks）── -->
         <section id="tasks-page" class="page">
+          <div class="page-subtitle">最适合：管理待处理任务队列，追踪工作进展</div>
           <!-- Quick Filter Chips -->
           <div class="quick-filter-bar" id="tasks-quick-filters">
             <button class="quick-chip active" data-filter="all">全部</button>
@@ -233,9 +292,30 @@
           </div>
         </section>
 
+        <section id="timeline-page" class="page">
+          <div class="page-header">
+            <h2 class="page-title">事件时间线</h2>
+            <div class="page-subtitle">最适合：追溯历史操作记录和系统事件</div>
+          </div>
+          <div class="timeline-filters">
+            <select id="timeline-type-filter" class="select-sm">
+              <option value="">全部类型</option>
+              <option value="system_start">系统启动</option>
+              <option value="task_created">任务创建</option>
+              <option value="task_updated">任务变更</option>
+            </select>
+            <button class="secondary-button" onclick="loadTimeline()">刷新</button>
+          </div>
+          <div id="timeline-list" class="timeline-list">
+            <div class="state-box loading">加载中…</div>
+          </div>
+        </section>
+
         <!-- ── 用量（Usage）── -->
         <section id="usage-page" class="page">
+          <div class="page-subtitle">最适合：了解 API 用量、成本和上下文压力</div>
           <div id="usage-state" class="state-box loading">用量数据加载中…</div>
+          <div id="budget-status-card" class="budget-status-card kpi-card" style="margin-bottom:var(--space-md)"></div>
           <!-- Segment Switch for time period -->
           <div class="segment-switch" id="usage-period-switch" style="margin-bottom:var(--space-lg)">
             <button class="segment-item active" data-period="today">今天</button>
@@ -284,11 +364,15 @@
 
         <!-- ── 记忆（Memory）── -->
         <section id="memory-page" class="page">
+          <div class="page-subtitle">最适合：检查 Agent 记忆健康状态和内容</div>
           <div id="memory-state" class="state-box loading">记忆文件加载中…</div>
           <div class="grid docs-layout">
-            <section class="panel">
-              <div class="panel-head">
-                <h3>记忆文件 <em>— Agent 工作区文件</em></h3>
+            <section class="panel memory-panel">
+              <div class="panel-head panel-head--stacked">
+                <div class="page-header page-header--compact">
+                  <h3 class="page-title">记忆文件</h3>
+                  <div class="page-subtitle">Agent 工作区文件</div>
+                </div>
                 <button id="refresh-memory" class="ghost-button">刷新</button>
               </div>
               <div id="memory-list" class="stack"></div>
@@ -307,6 +391,7 @@
 
         <!-- ── 文档（Docs）── -->
         <section id="docs-page" class="page">
+          <div class="page-subtitle">最适合：浏览和编辑项目文档与知识文件</div>
           <div class="page-controls">
             <div id="docs-state" class="state-box loading">文档列表加载中…</div>
             <button id="refresh-docs" class="btn-secondary" style="margin-left:auto">刷新文档</button>
@@ -333,6 +418,7 @@
 
         <!-- ── 设置（Settings）── -->
         <section id="settings-page" class="page">
+          <div class="page-subtitle">最适合：配置飞书通知、安全模式和系统集成</div>
           <div id="settings-api-state" class="state-box loading">安全设置加载中…</div>
           <div id="config-state" class="state-box loading" style="display:none;">模板与 Agent 数据加载中…</div>
 
@@ -346,7 +432,8 @@
                   <span class="security-icon">🔒</span>
                   <span class="security-label">只读模式</span>
                 </div>
-                <div class="muted security-desc">写操作已禁用（READONLY_MODE=true）。仅允许 GET / HEAD / OPTIONS 请求。</div>
+                <div class="muted security-desc">当前模式：只读安全模式 — AI 不会修改任何系统文件</div>
+                <div class="security-hint muted">只读模式开启时，所有写操作将被拦截并返回友好提示</div>
               </div>
               <div class="security-card">
                 <div class="muted">Token 鉴权</div>
@@ -378,8 +465,36 @@
           <!-- 飞书通知状态 -->
           <section class="panel">
             <div class="panel-head"><h3>飞书通知 <em>— Bot 连接状态</em></h3></div>
+            <div class="feishu-empty-state" id="feishu-empty-state">
+              <div class="feishu-empty-state__icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="feishu-empty-state__svg" aria-hidden="true">
+                  <path d="M12 2C8.13 2 5 5.13 5 9v4l-2 2v1h18v-1l-2-2V9c0-3.87-3.13-7-7-7z" fill="currentColor"/>
+                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="feishu-empty-state__body">
+                <p class="feishu-empty-state__title">飞书通知未配置</p>
+                <p class="feishu-empty-state__desc">连接飞书后可接收 Agent 工作通知，及时掌握任务进展</p>
+              </div>
+              <button type="button" class="feishu-empty-state__cta btn btn--accent" id="feishu-empty-state-cta" onclick="goToSettings()">去配置</button>
+            </div>
             <div id="feishu-notify-status" class="stack gap-sm">
               <div class="muted">加载中…</div>
+            </div>
+            <div class="settings-card">
+              <div class="settings-card-title">🔔 飞书告警通知</div>
+              <div class="settings-card-desc">配置后，当 Agent 上下文压力过高或长时间空闲时，控制台会主动推送告警到指定飞书群。</div>
+              <div class="settings-row">
+                <span class="settings-label">当前状态</span>
+                <span id="feishu-webhook-status" class="badge">检查中…</span>
+              </div>
+              <div class="settings-row">
+                <span class="settings-label">触发条件</span>
+                <span class="muted">上下文压力 ≥ 80% · Agent 空闲 > 2小时</span>
+              </div>
+              <div class="settings-hint muted" style="margin-top:8px;font-size:12px;">
+                如需启用：在服务器 .env 文件中配置 FEISHU_WEBHOOK_URL，重启服务后生效。
+              </div>
             </div>
           </section>
 
@@ -421,31 +536,15 @@
           </div>
         </section>
       </main>
-      <!-- ── 右侧 Inspector Sidebar ── -->
-      <aside class="inspector-sidebar" id="inspector-sidebar">
-        <div class="inspector-section">
-          <div class="inspector-label">系统状态</div>
-          <div class="inspector-value">
-            <span class="badge running" id="inspector-system-badge">检查中</span>
-          </div>
+      <aside class="inspector-panel closed" id="inspector-panel">
+        <div class="inspector-header">
+          <span class="inspector-title" id="inspector-title">详情</span>
+          <button class="icon-btn" onclick="closeInspector()">✕</button>
         </div>
-        <div class="inspector-section">
-          <div class="inspector-label">今日用量</div>
-          <div class="inspector-value" id="inspector-usage-value">0 tokens</div>
-          <div class="inspector-meta" id="inspector-usage-meta">≈ $0 USD</div>
-        </div>
-        <div class="inspector-section">
-          <div class="inspector-label">活跃 Agent</div>
-          <div class="inspector-value" id="inspector-working-value">0 个运行中</div>
-          <div class="inspector-meta" id="inspector-working-meta">0 空闲 · 0 阻塞</div>
-        </div>
-        <div class="inspector-section">
-          <div class="inspector-label">待处理事项</div>
-          <div class="inspector-value" id="inspector-queue-value" style="color:var(--color-success)">✅ 无待处理</div>
+        <div class="inspector-body" id="inspector-body">
+          <div class="muted" style="padding:24px;text-align:center">点击 Agent 或任务查看详情</div>
         </div>
       </aside>
-      <button class="inspector-toggle" id="inspector-toggle" title="收起/展开 inspector">›</button>
-    </div>
 
     <!-- ── 全站搜索浮层 ── -->
     <div id="search-overlay" class="search-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="全站搜索">

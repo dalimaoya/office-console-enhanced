@@ -1,12 +1,12 @@
 /**
- * DocsController — 文档文件列表 API
- *
- * Iter-4 新增：扫描项目 docs 目录，返回文档文件列表或指定文件内容
+ * DocsController — 文档文件列表/更新 API
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { stat, readdir, readFile } from 'node:fs/promises';
-import { join, basename, resolve } from 'node:path';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { basename, join, resolve } from 'node:path';
+import { appendTimelineEvent } from '../services/timeline-service.js';
+import { generateDiffSummary } from '../services/diff-service.js';
 import { sendSuccess, sendError } from '../utils/responses.js';
 
 const DOCS_DIR = '/root/.openclaw/workspace/projects/office-console-enhanced/docs';
@@ -25,16 +25,22 @@ function filenameToName(filename: string): string {
     .replace(/-/g, ' ');
 }
 
+function resolveDocPath(filename: string): string {
+  return resolve(join(DOCS_DIR, basename(filename)));
+}
+
+function isDocPathSafe(filePath: string): boolean {
+  return filePath.startsWith(resolve(DOCS_DIR));
+}
+
 export async function getDocs(req: Request, res: Response, next: NextFunction) {
   try {
     const fileParam = req.query.file;
 
-    // If ?file=xxx.md — return file content
     if (fileParam) {
       const filename = basename(String(fileParam));
-      // Security: only allow .md files within DOCS_DIR (no path traversal)
-      const filePath = resolve(join(DOCS_DIR, filename));
-      if (!filePath.startsWith(resolve(DOCS_DIR))) {
+      const filePath = resolveDocPath(filename);
+      if (!isDocPathSafe(filePath)) {
         return sendError(res, 400, 'INVALID_PATH', 'Invalid file path');
       }
 
@@ -46,7 +52,6 @@ export async function getDocs(req: Request, res: Response, next: NextFunction) {
       }
     }
 
-    // Otherwise — return file list
     let files: string[];
     try {
       const entries = await readdir(DOCS_DIR);
@@ -72,10 +77,52 @@ export async function getDocs(req: Request, res: Response, next: NextFunction) {
       }
     }
 
-    // Sort by mtime descending
     items.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
 
     return sendSuccess(res, items);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function patchDoc(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (process.env.READONLY_MODE === 'true') {
+      return sendError(res, 403, 'READONLY_MODE', '当前是只读模式，操作被禁止');
+    }
+
+    const filename = typeof req.body?.filename === 'string' ? basename(req.body.filename) : '';
+    const content = typeof req.body?.content === 'string' ? req.body.content : null;
+    if (!filename || !filename.endsWith('.md')) {
+      return sendError(res, 400, 'INVALID_FILENAME', 'filename must be a .md file');
+    }
+    if (content === null) {
+      return sendError(res, 400, 'INVALID_CONTENT', 'content is required');
+    }
+
+    const filePath = resolveDocPath(filename);
+    if (!isDocPathSafe(filePath)) {
+      return sendError(res, 400, 'INVALID_PATH', 'Invalid file path');
+    }
+
+    let before = '';
+    try {
+      before = await readFile(filePath, 'utf8');
+    } catch {
+      before = '';
+    }
+
+    await mkdir(DOCS_DIR, { recursive: true });
+    await writeFile(filePath, content, 'utf8');
+
+    const diff = generateDiffSummary(before, content);
+    await appendTimelineEvent({
+      type: 'doc_updated',
+      summary: `文档更新：${filename}（${diff.summary}）`,
+      data: { filename, diff },
+    });
+
+    return res.json({ ok: true, diff });
   } catch (error) {
     next(error);
   }

@@ -225,6 +225,7 @@ const ROUTES = {
   agents:        { label: 'Agent 状态', icon: '🤖' },
   collaboration: { label: '协作',       icon: '🔗' },
   tasks:         { label: '任务',       icon: '📋' },
+  timeline:      { label: '时间线',     icon: '🕘' },
   usage:         { label: '用量',       icon: '📊' },
   memory:        { label: '记忆',       icon: '🧠' },
   docs:          { label: '文档',       icon: '📄' },
@@ -266,6 +267,53 @@ function escapeHtml(value) {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
+}
+
+
+function initTheme() {
+  const saved = localStorage.getItem('office-console-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : '');
+  updateThemeBtn(saved);
+}
+function toggleTheme() {
+  const current = localStorage.getItem('office-console-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('office-console-theme', next);
+  document.documentElement.setAttribute('data-theme', next === 'light' ? 'light' : '');
+  updateThemeBtn(next);
+}
+function updateThemeBtn(theme) {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '🌓';
+}
+
+// 保存当前页面和滚动位置
+function savePageState() {
+  const active = document.querySelector('.nav-link.active');
+  if (active) sessionStorage.setItem('last-route', active.dataset.route || '');
+  sessionStorage.setItem('scroll-y', window.scrollY.toString());
+}
+
+// 恢复页面和滚动位置
+function restorePageState() {
+  const lastRoute = sessionStorage.getItem('last-route');
+  if (lastRoute) {
+    const btn = document.querySelector(`.nav-link[data-route="${lastRoute}"]`);
+    if (btn) btn.click();
+  }
+  const scrollY = parseInt(sessionStorage.getItem('scroll-y') || '0');
+  if (scrollY > 0) setTimeout(() => window.scrollTo(0, scrollY), 100);
+}
+
+function updateStatusStrip(status) {
+  const conn = document.getElementById('strip-connection');
+  const agents = document.getElementById('strip-agents');
+  const sec = document.getElementById('strip-security');
+  const ver = document.getElementById('strip-version');
+  if (conn) conn.textContent = '🟢 已连接';
+  if (agents && status.agents) agents.textContent = `${status.agents.working || 0}工作 / ${status.agents.total || 0}Agent`;
+  if (sec && status.security) sec.textContent = status.security.readonly ? '🔒 只读' : '🔓 正常';
+  if (ver && status.version) ver.textContent = `v${status.version}`;
 }
 
 // ─── 本地化工具函数 ────────────────────────────────────────────────────────────
@@ -322,12 +370,86 @@ function setButtonLoading(button, loading, loadingText, idleText) {
   button.textContent = loading ? loadingText : idleText;
 }
 
+function formatChinaDateTime(value, fallback = '—') {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+}
+
+function formatChinaTime(value, fallback = '—') {
+  if (!value) return fallback;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return fallback;
+  return date.toLocaleTimeString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getMeaningfulSource(value) {
+  if (value == null) return '';
+  const normalized = String(value).trim();
+  if (!normalized) return '';
+  const lowered = normalized.toLowerCase();
+  if (lowered === 'unknown' || normalized === '未知') return '';
+  return normalized;
+}
+
 function getSourceLabel(payload) {
-  if (!payload?.success) return '不可用';
+  if (!payload?.success) return '';
   const source = payload.mode === 'file_reader' ? '文件直读'
     : payload.mode === 'cli_fallback' ? 'CLI降级'
-    : '未知';
-  return `${source}${payload.cached ? ' · cached' : ''}${payload.stale ? ' · stale' : ''}`;
+    : '';
+  const tags = [source];
+  if (payload.cached || payload.stale) tags.push('已缓存');
+  return tags.filter(Boolean).join(' · ');
+}
+
+function formatDashboardMeta(payload, lastCheck) {
+  const parts = [];
+  const sourceLabel = getSourceLabel(payload);
+  const checkedAt = formatChinaTime(lastCheck, '');
+  if (sourceLabel) parts.push(sourceLabel);
+  if (checkedAt) parts.push(`检查时间：${checkedAt}（北京时间）`);
+  return parts.join(' · ') || '检查时间：—';
+}
+
+function formatStatusText(value, fallback = '状态未知') {
+  const normalized = String(value || '').trim();
+  if (!normalized) return fallback;
+  const lowered = normalized.toLowerCase();
+  const map = {
+    ok: '正常',
+    healthy: '健康',
+    good: '良好',
+    running: '运行中',
+    normal: '正常',
+    connected: '已连接',
+    degraded: '已降级',
+    partial: '部分可用',
+    warning: '警告',
+    slow: '较慢',
+    timeout: '超时',
+    error: '异常',
+    unhealthy: '不健康',
+    critical: '严重异常',
+    failed: '失败',
+    offline: '离线',
+    down: '不可用',
+    unknown: fallback,
+  };
+  return map[lowered] || normalized;
+}
+
+function renderStatusRow(label, value, valueClass = '') {
+  return `
+    <div class="status-row">
+      <span class="status-label">${escapeHtml(label)}</span>
+      <span class="status-value${valueClass ? ` ${valueClass}` : ''}">${escapeHtml(String(value || '—'))}</span>
+    </div>`;
 }
 
 function applyDataStateMessage(payload, loadingText, successText) {
@@ -355,28 +477,10 @@ function extractDebugMeta(response) {
   return { requestId, cacheStatus, errorCode, warningType };
 }
 
-function renderDebugMeta(meta, title = '联调信息') {
-  if (!meta) return '';
-  const rows = [
-    meta.requestId  ? ['X-Request-Id',    meta.requestId]  : null,
-    meta.cacheStatus? ['X-Cache-Status',  meta.cacheStatus]: null,
-    meta.errorCode  ? ['X-Error-Code',    meta.errorCode]  : null,
-    meta.warningType? ['X-Warning-Type',  meta.warningType]: null,
-  ].filter(Boolean);
-  if (!rows.length) return '';
-  return `
-    <div class="debug-meta">
-      <div class="debug-meta-title">${escapeHtml(title)}</div>
-      <div class="debug-meta-grid">
-        ${rows.map(([label, value]) => `
-          <div class="debug-chip">
-            <span>${escapeHtml(label)}</span>
-            <code>${escapeHtml(value)}</code>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+function renderDebugMeta() {
+  return '';
 }
+
 
 function renderErrorCard(payload, actionText = '请稍后重试') {
   const error = payload?.error || {};
@@ -386,13 +490,15 @@ function renderErrorCard(payload, actionText = '请稍后重试') {
       ${error.detail ? `<div class="detail-box"><div class="muted">detail</div><pre>${escapeHtml(error.detail)}</pre></div>` : ''}
       <div class="muted">${escapeHtml(actionText)}</div>
     </div>`;
+  updateFeishuEmptyState();
 }
 
+
 function renderDataSourceSummary(label, payload) {
-  const stateText = !payload ? '加载中' : !payload.success ? '失败' : payload.stale ? 'stale' : '正常';
+  const stateText = !payload ? '加载中' : !payload.success ? '失败' : payload.stale ? '已缓存' : '正常';
   const desc = !payload ? '加载中'
     : !payload.success ? `${payload.error.code}｜${payload.error.message}`
-    : payload.stale ? (payload.warning?.message || '使用缓存降级数据')
+    : payload.stale ? (payload.warning?.message || '当前展示的是缓存数据')
     : '数据可正常操作';
   return `
     <div class="summary-card ${stateClass(!payload ? 'loading' : !payload.success ? 'error' : payload.stale ? 'warning' : 'success')}">
@@ -400,7 +506,9 @@ function renderDataSourceSummary(label, payload) {
       <strong>${escapeHtml(stateText)}</strong>
       <div class="muted">${escapeHtml(desc)}</div>
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 async function apiFetch(url, options = {}) {
   const response = await fetch(url, {
@@ -430,6 +538,7 @@ function routeFromHash() {
 
 function setRoute(route) {
   if (!ROUTES[route]) route = 'overview';
+  savePageState();
   state.route = route;
 
   // update URL hash without pushing to history
@@ -443,15 +552,116 @@ function setRoute(route) {
     btn.classList.toggle('active', btn.dataset.route === route);
   });
 
-  // show/hide sections
+  // show/hide sections with fade transition
   document.querySelectorAll('.page').forEach((page) => {
-    page.classList.toggle('active', page.id === `${route}-page`);
+    const isTarget = page.id === `${route}-page`;
+    if (isTarget) {
+      page.classList.add('active');
+      requestAnimationFrame(() => page.classList.add('is-visible'));
+    } else {
+      page.classList.remove('is-visible');
+      page.classList.remove('active');
+    }
   });
+
+  updateOnboardingBannerVisibility();
+  updateFeishuEmptyState();
+  if (route === 'timeline') loadTimeline();
 
   // update page title
   const meta = ROUTES[route];
   if (els.pageTitle) els.pageTitle.textContent = meta.label;
   if (els.topbarEyebrow) els.topbarEyebrow.textContent = `${meta.icon} ${meta.label}`;
+}
+
+function navigateTo(route) {
+  if (!ROUTES[route]) route = 'overview';
+  setRoute(route);
+  loadRouteData(route);
+}
+
+function goToSettings() {
+  const settingsRoute = ROUTES.settings ? 'settings' : 'overview';
+  const btn = document.querySelector(`.nav-link[data-route="${settingsRoute}"]`);
+  if (btn) {
+    btn.click();
+    return;
+  }
+  if (typeof navigateTo === 'function') {
+    navigateTo(settingsRoute);
+    return;
+  }
+  if (typeof switchPage === 'function') {
+    switchPage(settingsRoute);
+    return;
+  }
+  if (typeof showPage === 'function') {
+    showPage(settingsRoute);
+  }
+}
+window.navigateTo = navigateTo;
+window.goToSettings = goToSettings;
+
+function isFeishuConfigured() {
+  const localToken = (localStorage.getItem('feishu_token') || '').trim();
+  const localWebhook = (localStorage.getItem('feishu_webhook') || '').trim();
+  if (localToken || localWebhook) return true;
+  const runtimeConfigured = window.feishuConfigured === true;
+  const settingsConfigured = Boolean(settingsState?.data?.success && (settingsState.data.data?.feishuWebhook?.configured || settingsState.data.data?.feishu?.configured));
+  const wiringConfigured = Boolean(wiringState?.data?.success && (wiringState.data.data?.feishu?.webhookConfigured || wiringState.data.data?.feishu?.configured));
+  return runtimeConfigured || settingsConfigured || wiringConfigured;
+}
+
+function updateFeishuEmptyState() {
+  const el = document.getElementById('feishu-empty-state');
+  if (!el) return;
+  const show = !isFeishuConfigured();
+  el.style.display = show ? 'flex' : 'none';
+}
+
+function initFeishuEmptyState() {
+  const cta = document.getElementById('feishu-empty-state-cta');
+  if (cta && !cta.dataset.bound) {
+    cta.dataset.bound = 'true';
+    cta.addEventListener('click', () => goToSettings());
+  }
+  updateFeishuEmptyState();
+}
+
+function updateOnboardingBannerVisibility() {
+  const banner = document.getElementById('onboarding-banner');
+  if (!banner) return;
+  const hidden = localStorage.getItem('oc_onboarding_dismissed') === '1';
+  banner.style.display = hidden ? 'none' : 'flex';
+}
+
+function initOnboardingBanner() {
+  const banner = document.getElementById('onboarding-banner');
+  const closeBtn = document.getElementById('onboarding-banner-close');
+  if (!banner) return;
+  updateOnboardingBannerVisibility();
+  if (closeBtn && !closeBtn.dataset.bound) {
+    closeBtn.dataset.bound = 'true';
+    closeBtn.addEventListener('click', () => {
+      banner.classList.add('is-hidden');
+      localStorage.setItem('oc_onboarding_dismissed', '1');
+      banner.addEventListener('transitionend', () => {
+        banner.style.display = 'none';
+        banner.classList.remove('is-hidden');
+      }, { once: true });
+    });
+  }
+}
+
+function applyReadonlyStateToTaskButtons(container = document) {
+  const readonly = Boolean(state.security.readonlyMode);
+  container.querySelectorAll('.btn-change-status, #btn-create-task, .btn-task-delete, .btn-task-add, .btn-task-create, .btn-task-new').forEach((btn) => {
+    btn.disabled = readonly;
+    btn.classList.toggle('is-readonly-disabled', readonly);
+    btn.style.opacity = readonly ? '0.4' : '';
+    btn.style.cursor = readonly ? 'not-allowed' : '';
+    btn.title = readonly ? '当前为只读模式，无法执行任务写操作' : '';
+  });
 }
 
 // ─── Security status ──────────────────────────────────────────────────────────
@@ -505,6 +715,9 @@ function renderSecurityStatus() {
   if (tokenLabel) {
     tokenLabel.textContent = state.security.tokenAuth ? '已配置' : '未配置（本地模式）';
   }
+
+  applyReadonlyStateToTaskButtons();
+  updateStatusStrip({ security: { readonly: readonlyMode } });
 }
 
 // ─── Toast Notification System ───────────────────────────────────────────────
@@ -598,6 +811,8 @@ function connectSSE() {
     sseConnection.addEventListener('open', () => {
       const wasDisconnected = state.sse.status === 'reconnecting' || state.sse.status === 'disconnected';
       updateSseStatus('connected', '🟢', '已连接');
+      const stripConnection = document.getElementById('strip-connection');
+      if (stripConnection) stripConnection.textContent = '🟢 已连接';
       state.sse.errorCount = 0;
       state.sse.reconnectDelay = 1000;  // reset backoff on successful connect
       state.sse.lastPing = Date.now();
@@ -611,6 +826,8 @@ function connectSSE() {
     sseConnection.addEventListener('error', () => {
       state.sse.errorCount++;
       updateSseStatus('reconnecting', '🟡', '重连中');
+      const stripConnection = document.getElementById('strip-connection');
+      if (stripConnection) stripConnection.textContent = '🔴 断开';
       showToast({ type: 'warning', message: '实时连接已断开，尝试重连...', duration: 0 });
       if (state.sse.reconnectTimeout) clearTimeout(state.sse.reconnectTimeout);
       // Exponential backoff: 1s → 2s → 4s → 8s → max 30s
@@ -638,6 +855,8 @@ function connectSSE() {
 
   } catch {
     updateSseStatus('disconnected', '🔴', '已断开');
+    const stripConnection = document.getElementById('strip-connection');
+    if (stripConnection) stripConnection.textContent = '🔴 断开';
     state.sse.reconnectTimeout = setTimeout(() => connectSSE(), 3000);
   }
 }
@@ -817,6 +1036,7 @@ function renderFeishuStatus(feishu) {
   const el = document.querySelector('#feishu-notify-status');
   if (!el) return;
   const configured = feishu?.configured ?? false;
+  window.feishuConfigured = configured;
   const webhookDesc = configured
     ? `<div><span class="muted">FEISHU_WEBHOOK_URL：</span><span class="pill success">✅ 已配置</span></div>`
     : `<div><span class="muted">FEISHU_WEBHOOK_URL：</span><span class="pill neutral">⬜ 未配置</span></div>
@@ -827,7 +1047,34 @@ function renderFeishuStatus(feishu) {
       <div class="muted">触发条件：agent 运行异常、任务 blocked 时自动推送飞书通知。</div>
       ${feishu === null ? '<div class="muted">⚠️ 飞书通知数据不可用，请检查 /api/v1/settings 接口。</div>' : ''}
     </div>`;
+  updateFeishuEmptyState();
 }
+
+async function loadFeishuWebhookStatus() {
+  const el = document.getElementById('feishu-webhook-status');
+  if (!el) return;
+  try {
+    const { payload } = await apiFetch('/api/v1/settings/wiring-status');
+    const data = payload?.data || payload || {};
+    const checks = Array.isArray(data.checks) ? data.checks : [];
+    const feishuCheck = checks.find(c => c?.id?.includes('feishu') || c?.label?.includes('飞书'));
+    if (feishuCheck) {
+      const configured = feishuCheck.status === 'ok';
+      el.textContent = configured ? '已配置' : '未配置';
+      el.className = 'badge ' + (configured ? 'tone-ok' : 'tone-warn');
+      return;
+    }
+
+    const feishu = data.feishu || {};
+    const configured = Boolean(feishu.webhookConfigured || feishu.configured || feishu.url);
+    el.textContent = configured ? '已配置' : '未配置';
+    el.className = 'badge ' + (configured ? 'tone-ok' : 'tone-warn');
+  } catch {
+    el.textContent = '未配置';
+    el.className = 'badge tone-warn';
+  }
+}
+
 
 // Settings / Config
 async function loadConfigOverview() {
@@ -922,8 +1169,7 @@ function renderDashboard() {
   }
 
   const { system = {}, agents = {}, workspaces = {}, alerts = [] } = payload.data || {};
-  const sourceLabel = getSourceLabel(payload);
-  if (els.dashboardMeta) els.dashboardMeta.textContent = `${sourceLabel} · lastCheck ${system.lastCheck || '未知'}`;
+  if (els.dashboardMeta) els.dashboardMeta.textContent = formatDashboardMeta(payload, system.lastCheck);
 
   // 更新 KPI 数据
   updateDashboardKPIs({
@@ -1229,21 +1475,26 @@ function renderHealth() {
   const pillClass = stale || gatewayStatus !== 'ok' ? 'warning' : 'success';
   if (els.healthPill) {
     els.healthPill.className = `pill ${pillClass}`;
-    els.healthPill.textContent = stale ? 'Stale 健康数据' : gatewayStatus === 'ok' ? 'Gateway 正常' : `Gateway ${gatewayStatus}`;
+    els.healthPill.textContent = stale ? '缓存健康数据' : gatewayStatus === 'ok' ? 'Gateway 正常' : `Gateway ${formatStatusText(gatewayStatus, '状态未知')}`;
   }
+  const checkedAtText = formatChinaDateTime(payload.data?.checkedAt, '—');
+  const rawSource = getMeaningfulSource(payload.data?.source);
+  const sourceText = rawSource || getMeaningfulSource(getSourceLabel(payload));
   if (els.healthState) els.healthState.innerHTML = `
     <div class="stack gap-sm">
-      ${stale ? `<div class="state-box warning">当前健康信息来自缓存降级数据。</div>` : ''}
+      ${stale ? `<div class="state-box warning">当前健康信息来自缓存数据。</div>` : ''}
       <div class="list-card stack gap-sm">
-        <div><strong>service</strong>：${escapeHtml(payload.data?.service?.status || 'unknown')}</div>
-        <div><strong>gateway</strong>：${escapeHtml(gatewayStatus)}</div>
-        <div class="muted">checkedAt：${escapeHtml(payload.data?.checkedAt || '未知')}</div>
-        <div class="muted">source：${escapeHtml(getSourceLabel(payload))}</div>
-        ${payload.warning?.message ? `<div class="muted">warning：${escapeHtml(payload.warning.message)}</div>` : ''}
+        ${renderStatusRow('服务状态', formatStatusText(payload.data?.service?.status, '状态未知'))}
+        ${renderStatusRow('Gateway', formatStatusText(gatewayStatus, '状态未知'))}
+        ${renderStatusRow('检查时间', `${checkedAtText}（北京时间）`)}
+        ${sourceText ? renderStatusRow('数据来源', sourceText) : ''}
+        ${payload.warning?.message ? renderStatusRow('提示信息', payload.warning.message) : ''}
       </div>
       ${renderDebugMeta(state.debugMeta.health, 'Health 调试头')}
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 function renderAgents() {
   const payload = state.agentsData;
@@ -1275,6 +1526,7 @@ function renderAgents() {
     working: [],  // 活跃/工作中
     idle: [],     // 空闲/正常
     blocked: [],  // 阻塞/错误
+    backlog: [],  // 待处理
     other: []     // 其他状态
   };
   
@@ -1284,8 +1536,10 @@ function renderAgents() {
       groups.working.push(agent);
     } else if (status === 'idle' || status === 'normal') {
       groups.idle.push(agent);
-    } else if (status === 'blocked' || status === 'error' || status === 'warning' || status === 'backlog') {
+    } else if (status === 'blocked' || status === 'error' || status === 'warning') {
       groups.blocked.push(agent);
+    } else if (status === 'backlog') {
+      groups.backlog.push(agent);
     } else {
       groups.other.push(agent);
     }
@@ -1419,6 +1673,17 @@ function renderAgents() {
     </div>`;
   }
   
+  // 待处理区
+  if (groups.backlog.length > 0) {
+    zonesHtml += `
+    <div class="agent-zone" id="agents-backlog-zone">
+      <div class="agent-zone-title">🔵 待处理 (${groups.backlog.length})</div>
+      <div class="agent-grid" id="agents-backlog-grid">
+        ${groups.backlog.map(renderAgentCard).join('')}
+      </div>
+    </div>`;
+  }
+  
   // 其他状态区（可选显示）
   if (groups.other.length > 0) {
     zonesHtml += `
@@ -1469,7 +1734,14 @@ function renderAgents() {
         const name = AGENT_CHINESE_NAMES[agentId] || agentId;
         const status = agentData.statusDetail?.status || agentData.status || '未知';
         const task   = agentData.statusDetail?.currentTask || '无任务';
-        showToast({ type: 'info', message: `${name}（${status}）：${task.length > 80 ? task.slice(0, 78) + '…' : task}`, duration: 5000 });
+        openInspector(name, `
+          <div class="stack gap-sm">
+            <div><strong>状态：</strong>${escapeHtml(status)}</div>
+            <div><strong>当前任务：</strong>${escapeHtml(task)}</div>
+            <div><strong>模型：</strong>${escapeHtml(agentData.model || '—')}</div>
+            <div><strong>工作区：</strong>${escapeHtml(agentData.workspace || '—')}</div>
+            <div><strong>最近活跃：</strong>${escapeHtml(formatDateCN(agentData.statusDetail?.lastActiveAt || agentData.lastActive || '—'))}</div>
+          </div>`);
       }
     });
   });
@@ -1531,7 +1803,9 @@ function renderApplyFeedback() {
       ${state.applyFeedback.detail ? `<pre class="feedback-detail">${escapeHtml(state.applyFeedback.detail)}</pre>` : ''}
       ${renderDebugMeta(state.applyFeedback.debugMeta, '本次 apply 调试头')}
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 function renderConfigDebugSection() {
   return `
@@ -1540,7 +1814,9 @@ function renderConfigDebugSection() {
       ${renderDebugMeta(state.debugMeta.agents, 'Agent 列表调试头')}
       ${renderDebugMeta(state.debugMeta.templateDetail, '模板详情调试头')}
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 function renderTemplateDetail() {
   if (!els.templateDetail) return;
@@ -1845,6 +2121,8 @@ function renderTasks() {
 </div>`);
   }
 
+  applyReadonlyStateToTaskButtons();
+
   // 使用 API 数据或 fallback 到静态数据
   const activeTasks = tasksState.data || STATIC_TASKS;
 
@@ -2095,12 +2373,27 @@ function renderTaskDetail(taskId) {
     content.querySelectorAll('.btn-change-status').forEach((btn) => {
       btn.addEventListener('click', () => changeTaskStatus(btn.dataset.taskId, btn.dataset.newStatus));
     });
+    applyReadonlyStateToTaskButtons(content);
   }
 
+  openInspector(task.name, `
+      <div class="stack gap-sm">
+        <div><strong>任务状态：</strong>${escapeHtml(statusLabels[task.status] || task.status)}</div>
+        <div><strong>负责角色：</strong>${escapeHtml(task.role)}</div>
+        <div><strong>文件：</strong>${escapeHtml(task.filename || '—')}</div>
+        <div><strong>最后修改：</strong>${escapeHtml(task.date || '—')}</div>
+        <div><strong>摘要：</strong></div>
+        <div class="muted">${escapeHtml((task.preview || '').slice(0, 240) || '暂无摘要')}</div>
+      </div>`);
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function changeTaskStatus(taskId, newStatus) {
+  if (state.security.readonlyMode) {
+    showToast({ type: 'warning', message: '当前为只读模式，任务状态不可修改' });
+    applyReadonlyStateToTaskButtons();
+    return;
+  }
   try {
     const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/status`, {
       method: 'PATCH',
@@ -2806,7 +3099,9 @@ function renderUsageByAgent() {
         </tbody>
       </table>
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 // CSS 饼图渲染
 function renderUsagePieChart(agentUsageData) {
@@ -3030,7 +3325,14 @@ function renderMemoryList() {
     return formatFileSizeCN(bytes);
   }
   function fmtMtime(ts) {
-    return formatDateCN(ts);
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return '—';
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}-${dd} ${hh}:${mi}`;
   }
   function shortFilename(path) {
     return path ? path.split('/').pop() : '—';
@@ -3043,8 +3345,10 @@ function renderMemoryList() {
         <button class="memory-file-card ${f.file === memoryState.selectedFile ? 'active' : ''}"
                 data-file-path="${escapeHtml(f.file || '')}">
           <span class="memory-file-name"><span class="muted">文件：</span>${escapeHtml(shortFilename(f.file))}</span>
-          <span class="memory-file-mtime"><span class="muted">更新时间：</span>${fmtMtime(f.mtime)}</span>
-          <span class="memory-file-size"><span class="muted">大小：</span>${fmtSize(f.size)}</span>
+          <span class="memory-file-meta">
+            <span class="memory-file-mtime"><span class="muted">更新时间：</span>${fmtMtime(f.mtime)}</span>
+            <span class="memory-file-size"><span class="muted">大小：</span>${fmtSize(f.size)}</span>
+          </span>
         </button>`).join('')}
     </div>`).join('');
 
@@ -3246,11 +3550,99 @@ function renderCron() {
         </tbody>
       </table>
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 // ─── Wiring Status (Settings) ─────────────────────────────────────────────────
 
 const wiringState = { data: null, pending: false };
+
+const timelineState = { data: null, pending: false };
+
+function bindConnectionHealthAction() {
+  const actionBtn = document.getElementById('connection-health-action-btn');
+  if (!actionBtn || actionBtn.dataset.bound === 'true') return;
+  actionBtn.dataset.bound = 'true';
+  actionBtn.style.pointerEvents = 'auto';
+  actionBtn.style.cursor = 'pointer';
+  actionBtn.style.position = 'relative';
+  actionBtn.style.zIndex = '10';
+  actionBtn.onclick = null;
+  actionBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    goToSettings();
+  });
+}
+
+async function updateConnectionHealth() {
+  const card = document.getElementById('connection-health-card');
+  if (!card) return;
+  bindConnectionHealthAction();
+  try {
+    const res = await fetch('/api/v1/settings/wiring-status');
+    if (!res.ok) {
+      card.style.display = 'none';
+      return;
+    }
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    const checks = Array.isArray(data?.checks)
+      ? data.checks
+      : [
+          data?.gateway ? { label: 'Gateway', status: data.gateway.status === 'ok' || data.gateway.status === 'connected' ? 'ok' : 'error', hint: data.gateway.status === 'ok' || data.gateway.status === 'connected' ? '' : '未连接或状态异常' } : null,
+          data?.feishu ? { label: '飞书通知', status: data.feishu.webhookConfigured || data.feishu.configured ? 'ok' : 'warn', hint: data.feishu.webhookConfigured || data.feishu.configured ? '' : '未配置，连接后可接收 Agent 工作通知' } : null,
+        ].filter(Boolean);
+    const issues = checks.filter((c) => c.status === 'error' || c.status === 'warn');
+    if (issues.length > 0) {
+      card.style.display = 'flex';
+      const titleEl = document.getElementById('health-card-title');
+      const descEl = document.getElementById('health-card-desc');
+      if (titleEl) titleEl.textContent = issues.length > 1 ? '部分集成未连接' : `${issues[0].label} 未连接`;
+      if (descEl) descEl.textContent = issues.map((i) => `${i.label}：${i.hint || '未配置'}`).join('；');
+    } else {
+      card.style.display = 'none';
+    }
+  } catch {
+    card.style.display = 'none';
+  }
+}
+
+async function loadTimeline() {
+  const filter = document.getElementById('timeline-type-filter')?.value || '';
+  const url = `/api/v1/timeline?limit=50${filter ? `&type=${encodeURIComponent(filter)}` : ''}`;
+  const listEl = document.getElementById('timeline-list');
+  if (!listEl) return;
+  timelineState.pending = true;
+  listEl.innerHTML = '<div class="state-box loading">加载中…</div>';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('load failed');
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    const events = Array.isArray(data?.events) ? data.events : Array.isArray(data) ? data : [];
+    timelineState.data = events;
+    if (!events.length) {
+      listEl.innerHTML = '<div class="empty-state muted">暂无事件记录</div>';
+      return;
+    }
+    listEl.innerHTML = events.map((ev) => `
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <span class="timeline-time">${new Date(ev.ts || ev.timestamp || ev.createdAt || Date.now()).toLocaleString('zh-CN')}</span>
+          <span class="timeline-type badge">${escapeHtml(ev.type || 'event')}</span>
+          <span class="timeline-summary">${escapeHtml(ev.summary || ev.message || '无摘要')}</span>
+        </div>
+      </div>`).join('');
+  } catch {
+    listEl.innerHTML = '<div class="state-box error">加载失败</div>';
+  } finally {
+    timelineState.pending = false;
+  }
+}
+window.loadTimeline = loadTimeline;
 
 async function loadWiringStatus() {
   wiringState.pending = true;
@@ -3320,8 +3712,8 @@ function renderWiringStatus() {
           <span class="wiring-label">🌐 Gateway</span>
           <span class="wiring-status-dot ${gwCls}"></span>
         </div>
-        <div class="wiring-value">${escapeHtml(gwStatus)}</div>
-        <div class="muted">延迟：${escapeHtml(gwLatency)}</div>
+        ${renderStatusRow('连接状态', formatStatusText(gwStatus, '状态未知'), 'wiring-status-value')}
+        ${renderStatusRow('响应延迟', gwLatency, 'wiring-status-value')}
       </div>
 
       <!-- 飞书 Webhook -->
@@ -3330,8 +3722,8 @@ function renderWiringStatus() {
           <span class="wiring-label">✈️ 飞书 Webhook</span>
           <span class="wiring-status-dot ${feishuConfigured ? 'wiring-green' : 'wiring-red'}"></span>
         </div>
-        <div class="wiring-value">${feishuConfigured ? '✅ 已配置' : '⭕ 未配置'}</div>
-        ${feishu.url ? `<div class="muted" style="word-break:break-all;font-size:var(--text-xs);">${escapeHtml(feishu.url)}</div>` : ''}
+        ${renderStatusRow('配置状态', feishuConfigured ? '已配置' : '未配置', 'wiring-status-value')}
+        ${feishu.url ? renderStatusRow('Webhook 地址', feishu.url, 'wiring-status-value code-like') : ''}
       </div>
 
       <!-- 文件系统 -->
@@ -3340,17 +3732,19 @@ function renderWiringStatus() {
           <span class="wiring-label">📁 文件系统</span>
           <span class="wiring-status-dot ${fsReadable ? 'wiring-green' : 'wiring-red'}"></span>
         </div>
-        <div class="wiring-value">${fsReadable ? '✅ 可读' : '❌ 不可读'}</div>
-        <div class="muted">根路径：<code style="font-size:var(--text-xs);color:#c8d8ff">${escapeHtml(String(fsRoot))}</code></div>
+        ${renderStatusRow('访问状态', fsReadable ? '可读' : '不可读', 'wiring-status-value')}
+        ${renderStatusRow('根路径', String(fsRoot), 'wiring-status-value code-like')}
       </div>
     </div>
 
     <!-- 整体健康度摘要 -->
     <div class="state-box ${overallCls}" style="margin-top:var(--space-sm)">
-      整体健康度：<strong>${escapeHtml(overallHealth)}</strong>
+      整体健康度：<strong>${escapeHtml(formatStatusText(overallHealth, '状态未知'))}</strong>
       ${overall.message ? ` · ${escapeHtml(overall.message)}` : ''}
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 // ─── Page loader dispatcher ───────────────────────────────────────────────────
 async function loadRouteData(route) {
@@ -3362,10 +3756,14 @@ async function loadRouteData(route) {
       await loadAgents();
       break;
     case 'settings':
-      await Promise.all([loadConfigOverview(), loadSettings(), loadCron(), loadWiringStatus()]);
+      await Promise.all([loadConfigOverview(), loadSettings(), loadCron(), loadWiringStatus(), loadFeishuWebhookStatus()]);
+      await updateConnectionHealth();
       break;
     case 'tasks':
       await loadTasks();
+      break;
+    case 'timeline':
+      await loadTimeline();
       break;
     case 'docs':
       await loadDocs();
@@ -3375,6 +3773,7 @@ async function loadRouteData(route) {
       break;
     case 'usage':
       await loadUsage(usageState.period);
+      await loadBudgetStatus();
       break;
     case 'memory':
       await loadMemory();
@@ -3794,7 +4193,9 @@ function renderOverviewReadiness() {
         </div>
       </div>
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 /** 渲染 Agent 状态速览（Mini 卡片网格，CC 风格） */
 function renderOverviewAgentSummary() {
@@ -3848,7 +4249,9 @@ function renderOverviewAgentSummary() {
         }).join('')}
       </div>
     </div>`;
+  updateFeishuEmptyState();
 }
+
 
 /** P1-5: 将 ReadinessScore + Agent Summary 注入 Overview 页面 */
 function updateOverviewExtras() {
@@ -3875,12 +4278,140 @@ function updateOverviewExtras() {
   }
 }
 
+
+async function loadGlobalStatusStrip() {
+  try {
+    const { payload } = await apiFetch('/api/v1/status');
+    const data = payload?.data || payload;
+    if (payload?.success || data) updateStatusStrip(data || {});
+  } catch {}
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 const initialRoute = routeFromHash();
 setRoute(initialRoute);
 initSSE();
 initSessionDetailSidebar();  // Initialize session detail sidebar DOM
 initSearch();
-initInspectorSidebar();      // Initialize inspector sidebar
+// legacy inspector sidebar removed
+initOnboardingBanner();
+initFeishuEmptyState();
+initTheme();
 loadSecurityStatus();
+updateConnectionHealth();
+setInterval(updateConnectionHealth, 60000);
+setInterval(() => { loadNotifications(); if (state.route === 'usage') loadBudgetStatus(); }, 30000);
 await loadRouteData(initialRoute);
+loadNotifications();
+if (initialRoute === 'usage') loadBudgetStatus();
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('notification-bell-btn');
+  const panel = document.getElementById('notification-panel');
+  if (btn && panel) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display !== 'none') loadNotifications();
+    });
+    panel.addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => { panel.style.display = 'none'; });
+  }
+  initTheme();
+  restorePageState();
+  document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
+  loadGlobalStatusStrip();
+});
+applyReadonlyStateToTaskButtons();
+
+
+async function loadNotifications() {
+  try {
+    const res = await fetch('/api/v1/notifications?limit=20');
+    const data = await res.json();
+    const badge = document.getElementById('notification-badge');
+    const list = document.getElementById('notification-list');
+    if (badge) {
+      badge.textContent = data.unread_count || 0;
+      badge.style.display = (data.unread_count || 0) > 0 ? 'inline' : 'none';
+    }
+    if (list && data.items) {
+      if (!data.items.length) {
+        list.innerHTML = '<div class="muted" style="padding:16px;text-align:center">暂无通知</div>';
+      } else {
+        list.innerHTML = data.items.map(n => `
+          <div class="notification-item ${n.status === 'unread' ? 'unread' : ''}">
+            <div class="notification-item-title">${escapeHtml(n.title || '通知')}</div>
+            <div class="notification-item-body">${escapeHtml(n.body || '')}</div>
+            <div class="notification-item-actions">
+              ${n.status === 'unread' ? `<button class="text-btn" onclick="ackNotification('${n.id}')">已读</button>` : ''}
+              <button class="text-btn" onclick="snoozeNotification('${n.id}')">稍后</button>
+            </div>
+          </div>`).join('');
+      }
+    }
+  } catch {}
+}
+async function ackNotification(id) { await fetch('/api/v1/notifications/'+id+'/ack', {method:'POST'}); loadNotifications(); }
+async function snoozeNotification(id) { await fetch('/api/v1/notifications/'+id+'/snooze', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({minutes:60})}); loadNotifications(); }
+async function ackAllNotifications() { try { const res = await fetch('/api/v1/notifications?status=unread&limit=100'); const data = await res.json(); await Promise.all((data.items||[]).map(n => fetch('/api/v1/notifications/'+n.id+'/ack',{method:'POST'}))); } catch {} loadNotifications(); }
+window.ackNotification = ackNotification; window.snoozeNotification = snoozeNotification; window.ackAllNotifications = ackAllNotifications;
+
+async function loadBudgetStatus() {
+  try {
+    const res = await fetch('/api/v1/budget/status');
+    const data = await res.json();
+    const el = document.getElementById('budget-status-card');
+    if (!el) return;
+    const statusText = { ok:'正常', warn:'接近上限', over:'已超限' };
+    const statusClass = { ok:'tone-ok', warn:'tone-warn', over:'tone-error' };
+    el.innerHTML = `
+      <div class="budget-status-row">
+        <span class="muted">今日费用</span>
+        <span class="budget-val ${statusClass[data.status]||''}">$${((data.daily_cost_usd||0)).toFixed(4)}</span>
+        <span class="badge ${statusClass[data.status]||''}">${statusText[data.status]||data.status||'—'}</span>
+      </div>
+      <div class="budget-status-row">
+        <span class="muted">上下文压力</span>
+        <span class="budget-val ${statusClass[data.context_status]||''}">${((data.context_pressure||0)*100).toFixed(0)}%</span>
+        <span class="badge ${statusClass[data.context_status]||''}">${statusText[data.context_status]||data.context_status||''}</span>
+      </div>`;
+  } catch {}
+}
+
+function openInspector(title, contentHtml) {
+  const panel = document.getElementById('inspector-panel');
+  const titleEl = document.getElementById('inspector-title');
+  const bodyEl = document.getElementById('inspector-body');
+  if (panel) panel.classList.remove('closed');
+  if (titleEl) titleEl.textContent = title;
+  if (bodyEl) bodyEl.innerHTML = contentHtml;
+}
+function closeInspector() {
+  const panel = document.getElementById('inspector-panel');
+  if (panel) panel.classList.add('closed');
+}
+
+async function exportSnapshot() {
+  try {
+    const res = await fetch('/api/v1/snapshot/export');
+    if (!res.ok) throw new Error('导出失败');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `office-console-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast({ type: 'success', message: '快照导出成功' });
+  } catch (e) {
+    showToast({ type: 'error', message: '快照导出失败' });
+  }
+}
+
+window.openInspector = openInspector;
+window.closeInspector = closeInspector;
+window.exportSnapshot = exportSnapshot;
+
+window.addEventListener('beforeunload', savePageState);
