@@ -3581,6 +3581,104 @@ function renderCron() {
 
 const wiringState = { data: null, pending: false };
 
+// ─── Event Log View ───────────────────────────────────────────────────────────
+const EVENT_TYPE_COLORS = {
+  system:   'badge--blue',
+  role:     'badge--violet',
+  object:   'badge--yellow',
+  security: 'badge--red',
+};
+
+async function loadEventLogView() {
+  const listEl = document.getElementById('eventlog-list');
+  if (!listEl) return;
+  const filter = document.getElementById('eventlog-type-filter')?.value || '';
+  const url = `/api/v1/events/log?limit=20${filter ? `&type=${encodeURIComponent(filter)}` : ''}`;
+  listEl.innerHTML = '<div class="state-box loading">加载中…</div>';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('load failed');
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    const events = Array.isArray(data?.items)   ? data.items
+                 : Array.isArray(data?.events)  ? data.events
+                 : Array.isArray(data)           ? data
+                 : [];
+    if (!events.length) {
+      listEl.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无事件日志</div>';
+      return;
+    }
+    listEl.innerHTML = events.map((ev) => {
+      const ts = ev.ts || ev.timestamp || ev.created_at || ev.createdAt;
+      const timeStr = ts ? new Date(ts).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—';
+      const rawType = (ev.type || ev.event_type || 'system').toLowerCase();
+      // Extract top-level category: e.g. "system.start" -> "system"
+      const evTypeCategory = rawType.split('.')[0];
+      const badgeCls = EVENT_TYPE_COLORS[evTypeCategory] || EVENT_TYPE_COLORS[rawType] || 'badge--gray';
+      const sourceRole = ev.source_role || ev.role || ev.agent || ev.source || '—';
+      const evType = rawType;
+      const description = ev.description || ev.message || ev.summary || ev.content || '无描述';
+      return `<div class="eventlog-row">
+        <span class="eventlog-time">${escapeHtml(timeStr)}</span>
+        <span class="badge ${escapeHtml(badgeCls)}">${escapeHtml(evType)}</span>
+        <span class="eventlog-role">${escapeHtml(String(sourceRole))}</span>
+        <span class="eventlog-desc">${escapeHtml(String(description))}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    listEl.innerHTML = '<div class="state-box error">事件日志加载失败</div>';
+  }
+}
+window.loadEventLogView = loadEventLogView;
+
+// ─── Registry View ────────────────────────────────────────────────────────────
+const REGISTRY_TYPE_ICONS = {
+  brief:    '📄',
+  handoff:  '🤝',
+  review:   '🔍',
+  artifact: '📦',
+};
+
+async function loadRegistryView() {
+  const listEl = document.getElementById('registry-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="state-box loading">加载中…</div>';
+  try {
+    const res = await fetch('/api/v1/registry?status=active&limit=20');
+    if (!res.ok) throw new Error('load failed');
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    const items = Array.isArray(data?.objects) ? data.objects
+                : Array.isArray(data?.items)   ? data.items
+                : Array.isArray(data)           ? data
+                : [];
+    if (!items.length) {
+      listEl.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无活跃对象</div>';
+      return;
+    }
+    listEl.innerHTML = items.map((obj) => {
+      const objId = obj.object_id || obj.id || '—';
+      const objType = (obj.type || obj.object_type || '—').toLowerCase();
+      const icon = REGISTRY_TYPE_ICONS[objType] || '📁';
+      const owner = obj.owner || obj.created_by || '—';
+      const status = obj.status || 'active';
+      const createdAt = obj.created_at || obj.createdAt || obj.ts;
+      const timeStr = createdAt ? new Date(createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—';
+      return `<div class="registry-row">
+        <span class="registry-icon">${icon}</span>
+        <span class="registry-id mono">${escapeHtml(String(objId))}</span>
+        <span class="badge badge--gray">${escapeHtml(objType)}</span>
+        <span class="registry-owner">${escapeHtml(String(owner))}</span>
+        <span class="badge ok">${escapeHtml(status)}</span>
+        <span class="registry-time">${escapeHtml(timeStr)}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    listEl.innerHTML = '<div class="state-box error">对象注册表加载失败</div>';
+  }
+}
+window.loadRegistryView = loadRegistryView;
+
 const timelineState = { data: null, pending: false };
 
 function bindConnectionHealthAction() {
@@ -3767,7 +3865,7 @@ function renderWiringStatus() {
 async function loadRouteData(route) {
   switch (route) {
     case 'overview':
-      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue()]);
+      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadEventLogView(), loadRegistryView()]);
       break;
     case 'agents':
       await loadAgents();

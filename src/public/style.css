@@ -2809,3 +2809,84 @@ section,
 .status-strip { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-secondary); padding:0 12px; }
 .status-strip-item { white-space:nowrap; }
 .status-strip-sep { opacity:0.4; }
+
+/* ── 事件日志 & 对象注册表 (伊泽瑞尔 Iter-5) ── */
+.eventlog-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.eventlog-row:hover {
+  background: var(--card-hover);
+  border-color: rgba(255,255,255,0.11);
+}
+.eventlog-time {
+  font-size: var(--text-xs);
+  color: var(--dim);
+  white-space: nowrap;
+  min-width: 130px;
+  font-variant-numeric: tabular-nums;
+}
+.eventlog-role {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  min-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.eventlog-desc {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-sub, var(--text));
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.registry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.registry-row:hover {
+  background: var(--card-hover);
+  border-color: rgba(255,255,255,0.11);
+}
+.registry-icon { font-size: 14px; flex-shrink: 0; }
+.registry-id {
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: var(--text-xs);
+  color: #a0d0ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.registry-owner {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.registry-time {
+  font-size: var(--text-xs);
+  color: var(--dim);
+  white-space: nowrap;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
