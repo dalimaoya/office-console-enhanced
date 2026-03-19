@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { sendSuccess } from '../utils/responses.js';
 import { getUsageByAgent, getContextPressure, getUsageByModel } from '../services/usage-service.js';
 import { checkAndNotifyContextPressure } from '../services/notification-service.js';
+import type { UsageData } from '../types/dto.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
 const AGENTS_DIR = join(OPENCLAW_ROOT, 'agents');
@@ -125,7 +126,8 @@ export async function byAgent(req: Request, res: Response, next: NextFunction) {
     const period = String(req.query.period || 'today');
     const validPeriod = ['today', 'week'].includes(period) ? period : 'today';
     const result = await getUsageByAgent(validPeriod);
-    return res.json({ success: true, ...result });
+    const data: UsageData[] = result.data;
+    return res.json({ success: true, data, period: result.period, generatedAt: result.generatedAt });
   } catch (error) {
     next(error);
   }
