@@ -3228,6 +3228,7 @@ function renderContextPressure() {
     const level   = item.level ?? item.pressureLevel ?? 'normal';
     const ratio   = item.pressureRatio ?? (max > 0 ? used / max : 0);
     const pct     = Math.min(100, Math.round(ratio * 100));
+    const barCls  = level === 'critical' ? 'critical' : level === 'warning' ? 'warning' : 'normal';
     return `
       <div class="context-pressure-row">
         <div class="context-pressure-header">

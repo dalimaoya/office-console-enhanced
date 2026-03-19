@@ -136,8 +136,11 @@ async function deriveAgentStatus(
     } else {
       status = 'offline';
     }
-  } else if (ageMs <= WORKING_THRESHOLD_MS) {
+  } else if (ageMs <= WORKING_THRESHOLD_MS && (blockedTask || pendingTaskCount > 0 || currentTask)) {
     status = 'working';
+  } else if (ageMs <= WORKING_THRESHOLD_MS) {
+    // 最近活跃但无实际任务（如消息路由/会话心跳），视为 idle
+    status = 'idle';
   } else if (blockedTask) {
     status = 'blocked';
   } else if (pendingTaskCount > 0 && ageMs > WORKING_THRESHOLD_MS) {
