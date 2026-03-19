@@ -1182,15 +1182,15 @@ function renderDashboard() {
     return;
   }
 
-  const { system = {}, agents = {}, workspaces = {}, alerts = [] } = payload.data || {};
+  const { system = {}, agents = {}, workspaces = {}, alerts = [], usage = {} } = payload.data || {};
   if (els.dashboardMeta) els.dashboardMeta.textContent = formatDashboardMeta(payload, system.lastCheck);
 
-  // 更新 KPI 数据
+  // 更新 KPI 数据（优先用 dashboard 直接返回的 usage 字段，fallback 到 usageState）
   updateDashboardKPIs({
     system, agents, alerts,
     blockedTasks: getBlockedTasksCount(),
-    todayTokens: getTodayTokens(),
-    todayCost: getTodayCost(),
+    todayTokens: usage.todayTokens || getTodayTokens(),
+    todayCost: usage.todayCost || getTodayCost(),
     gatewayConnected: isGatewayConnected(),
     queueCount: getQueueCount()
   });
