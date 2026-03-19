@@ -231,17 +231,22 @@
               <div id="alerts-list" class="stack"></div>
             </section>
           </div>
-          <!-- ── 活跃对象注册表 ── -->
+          <!-- ── 活跃对象注册表（默认折叠） ── -->
           <section class="panel" id="registry-panel">
             <div class="panel-head">
               <h3>活跃对象 <em>— 对象注册表</em></h3>
-              <button class="ghost-button" onclick="loadRegistryView()">刷新</button>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="ghost-button" onclick="loadRegistryView()">刷新</button>
+                <button class="ghost-button" id="registry-toggle-btn" onclick="toggleCollapsiblePanel('registry')">展开 ▼</button>
+              </div>
             </div>
-            <div id="registry-list" class="stack gap-sm">
-              <div class="state-box loading">加载中…</div>
+            <div id="registry-panel-body" class="stack gap-sm" style="display:none">
+              <div id="registry-list" class="stack gap-sm">
+                <div class="state-box loading">加载中…</div>
+              </div>
             </div>
           </section>
-          <!-- ── 事件日志（Overview 卡片） ── -->
+          <!-- ── 事件日志（Overview 卡片，默认折叠） ── -->
           <section class="panel" id="eventlog-panel">
             <div class="panel-head">
               <h3>事件日志 <em>— 最近系统事件</em></h3>
@@ -254,10 +259,19 @@
                   <option value="security">security</option>
                 </select>
                 <button class="ghost-button" onclick="loadEventLogView()">刷新</button>
+                <button class="ghost-button" id="eventlog-toggle-btn" onclick="toggleCollapsiblePanel('eventlog')">展开 ▼</button>
               </div>
             </div>
-            <div id="eventlog-list" class="stack gap-sm">
-              <div class="state-box loading">加载中…</div>
+            <div id="eventlog-panel-body" style="display:none">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 0 6px 0;border-bottom:1px solid var(--border-subtle,#e5e7eb);margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer">
+                  <input type="checkbox" id="eventlog-show-healthcheck" onchange="loadEventLogView()" style="cursor:pointer">
+                  显示系统健康检查日志
+                </label>
+              </div>
+              <div id="eventlog-list" class="stack gap-sm">
+                <div class="state-box loading">加载中…</div>
+              </div>
             </div>
           </section>
         </section>

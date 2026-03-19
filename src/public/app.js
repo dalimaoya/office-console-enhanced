@@ -3784,11 +3784,20 @@ async function loadEventLogView() {
                  : Array.isArray(data?.events)  ? data.events
                  : Array.isArray(data)           ? data
                  : [];
-    if (!events.length) {
-      listEl.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无事件日志</div>';
+    // 噪音过滤：默认隐藏 health_check / dashboard.request 类事件
+    const showHealthcheck = document.getElementById('eventlog-show-healthcheck')?.checked ?? false;
+    const NOISE_PATTERNS = ['health_check', 'healthcheck', 'dashboard.request'];
+    const visibleEvents = showHealthcheck
+      ? events
+      : events.filter(ev => {
+          const t = (ev.type || ev.event_type || '').toLowerCase();
+          return !NOISE_PATTERNS.some(p => t.includes(p));
+        });
+    if (!visibleEvents.length) {
+      listEl.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无事件记录 · 系统运行后将自动记录</div>';
       return;
     }
-    listEl.innerHTML = events.map((ev) => {
+    listEl.innerHTML = visibleEvents.map((ev) => {
       const ts = ev.ts || ev.timestamp || ev.created_at || ev.createdAt;
       const timeStr = ts ? new Date(ts).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—';
       const rawType = (ev.type || ev.event_type || 'system').toLowerCase();
@@ -3833,7 +3842,7 @@ async function loadRegistryView() {
                 : Array.isArray(data)           ? data
                 : [];
     if (!items.length) {
-      listEl.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无活跃对象</div>';
+      listEl.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无活跃项目对象 · 从 Projects 页新建一个项目组开始</div>';
       return;
     }
     listEl.innerHTML = items.map((obj) => {
@@ -3858,6 +3867,41 @@ async function loadRegistryView() {
   }
 }
 window.loadRegistryView = loadRegistryView;
+
+// ─── 折叠面板（Overview 信息层次优化）──────────────────────────────────────────
+const COLLAPSIBLE_PANELS = ['registry', 'eventlog'];
+
+function toggleCollapsiblePanel(key) {
+  const body = document.getElementById(`${key}-panel-body`);
+  const btn  = document.getElementById(`${key}-toggle-btn`);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (btn) btn.textContent = isOpen ? '展开 ▼' : '收起 ▲';
+  try { localStorage.setItem(`oc_panel_${key}_open`, String(!isOpen)); } catch {}
+  // 展开时加载数据
+  if (!isOpen) {
+    if (key === 'registry') loadRegistryView();
+    if (key === 'eventlog') loadEventLogView();
+  }
+}
+window.toggleCollapsiblePanel = toggleCollapsiblePanel;
+
+function restoreCollapsiblePanels() {
+  COLLAPSIBLE_PANELS.forEach(key => {
+    let open = false;
+    try { open = localStorage.getItem(`oc_panel_${key}_open`) === 'true'; } catch {}
+    const body = document.getElementById(`${key}-panel-body`);
+    const btn  = document.getElementById(`${key}-toggle-btn`);
+    if (body) body.style.display = open ? 'block' : 'none';
+    if (btn) btn.textContent = open ? '收起 ▲' : '展开 ▼';
+    if (open) {
+      if (key === 'registry') loadRegistryView();
+      if (key === 'eventlog') loadEventLogView();
+    }
+  });
+}
+window.restoreCollapsiblePanels = restoreCollapsiblePanels;
 
 const timelineState = { data: null, pending: false };
 
@@ -3919,7 +3963,7 @@ async function loadTimeline() {
     const events = Array.isArray(data?.events) ? data.events : Array.isArray(data) ? data : [];
     timelineState.data = events;
     if (!events.length) {
-      listEl.innerHTML = '<div class="empty-state muted">暂无事件记录</div>';
+      listEl.innerHTML = '<div class="empty-state muted">暂无事件记录 · 系统运行后将自动记录</div>';
       return;
     }
     listEl.innerHTML = events.map((ev) => `
@@ -4045,7 +4089,8 @@ function renderWiringStatus() {
 async function loadRouteData(route) {
   switch (route) {
     case 'overview':
-      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadEventLogView(), loadRegistryView(), loadProjectStatus(), loadColdStart()]);
+      restoreCollapsiblePanels();
+      await Promise.all([loadDashboard(), loadHealth(), loadActionQueue(), loadProjectStatus(), loadColdStart()]);
       break;
     case 'agents':
       await loadAgents();
@@ -4574,11 +4619,18 @@ async function loadColdStart() {
   try {
     const { payload } = await apiFetch('/api/v1/cold-start');
     const data = payload?.data || payload || {};
-    const phase      = data.currentPhase || data.phase || '—';
-    const activeObjs = data.activeObjects ?? data.activeCount ?? '—';
+    const phase      = data.currentPhase || data.phase || '';
+    const activeObjs = data.activeObjects ?? data.activeCount ?? null;
     const events     = Array.isArray(data.recentEvents) ? data.recentEvents : (data.events || []);
     const lastEvent  = events[0] || null;
     const blockers   = Array.isArray(data.blockers) ? data.blockers : [];
+
+    // 空状态检测：没有阶段、没有活跃对象数、没有事件也没有阻塞
+    const isEmpty = !phase && activeObjs === null && !lastEvent && !blockers.length;
+    if (isEmpty) {
+      el.innerHTML = '<div class="empty-state muted" style="padding:18px 0;text-align:center">暂无快照数据 · 服务启动后5分钟内生成</div>';
+      return;
+    }
 
     let html = `<div class="grid two-up" style="gap:var(--space-sm)">
       <div class="kpi-card tone-ok" style="padding:12px 16px">
@@ -4635,7 +4687,7 @@ async function loadInstances() {
     const items = payload?.data?.items || payload?.data || (Array.isArray(payload) ? payload : []);
     if (stateEl) stateEl.style.display = 'none';
     if (!items.length) {
-      listEl.innerHTML = '<div class="empty-box">暂无项目实例，点击「新建项目组」创建第一个。</div>';
+      listEl.innerHTML = '<div class="empty-box">还没有项目组 · 点击「新建项目组」开始</div>';
       return;
     }
     listEl.innerHTML = items.map(inst => {
