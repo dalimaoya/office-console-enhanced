@@ -31,12 +31,15 @@ import {
 import { exportSnapshot, importSnapshot } from '../controllers/snapshot-controller.js';
 import { getEventLog } from '../controllers/event-log-controller.js';
 import { getRegistry, getRegistryById } from '../controllers/registry-controller.js';
+import { getDiagnostic } from '../controllers/diagnostic-controller.js';
+import { getProjectStatus, postProjectTransition } from '../controllers/project-status-controller.js';
 
 export const apiRouter = Router();
 
 // 新的健康端点（永远返回200，无需鉴权）
 apiRouter.get('/healthz', getHealthz);
 apiRouter.get('/status', getStatus);
+apiRouter.get('/diagnostic', getDiagnostic);
 
 // 所有其他路由应用 token 鉴权（如果配置了 token）
 apiRouter.use(...securityMiddleware);
@@ -130,3 +133,7 @@ apiRouter.get('/sessions/:id', getSessionById);
 // 对象注册表（只读）
 apiRouter.get('/registry', getRegistry);
 apiRouter.get('/registry/:object_id', getRegistryById);
+
+// 二期：项目状态机
+apiRouter.get('/projects/status', getProjectStatus);
+apiRouter.post('/projects/transition', postProjectTransition);

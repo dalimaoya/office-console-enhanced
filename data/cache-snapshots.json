@@ -7,11 +7,11 @@
       "gateway": {
         "status": "ok"
       },
-      "checkedAt": "2026-03-19T13:40:05.435Z"
+      "checkedAt": "2026-03-19T16:24:36.787Z"
     },
-    "fetchedAt": 1773927605433,
-    "expiresAt": 1773927620433,
-    "staleUntil": 1773927665433
+    "fetchedAt": 1773937476654,
+    "expiresAt": 1773937491654,
+    "staleUntil": 1773937536654
   },
   "templates.list": {
     "value": {
@@ -54,9 +54,9 @@
       ],
       "total": 5
     },
-    "fetchedAt": 1773927598510,
-    "expiresAt": 1773927898510,
-    "staleUntil": 1773929398510
+    "fetchedAt": 1773937480608,
+    "expiresAt": 1773937780608,
+    "staleUntil": 1773939280608
   },
   "agents": {
     "value": {
@@ -266,9 +266,9 @@
         "status": "normal",
         "uptime": "unknown",
         "version": "OpenClaw vunknown",
-        "lastCheck": "2026-03-19T16:12:05.823Z",
+        "lastCheck": "2026-03-19T16:24:37.642Z",
         "performance": {
-          "avgResponseMs": 537,
+          "avgResponseMs": 579,
           "health": "healthy"
         }
       },
@@ -292,7 +292,7 @@
           },
           {
             "name": "Avg Response Time",
-            "value": "0.5s",
+            "value": "0.6s",
             "trend": "improving"
           }
         ]
@@ -302,8 +302,8 @@
         "recentActivity": []
       },
       "usage": {
-        "todayTokens": 70793716,
-        "todayCost": 65.808186,
+        "todayTokens": 76849784,
+        "todayCost": 70.714003,
         "period": "today"
       },
       "alerts": [],
@@ -385,11 +385,11 @@
             ]
           }
         ],
-        "computedAt": "2026-03-19T16:12:05.823Z"
+        "computedAt": "2026-03-19T16:24:37.642Z"
       }
     },
-    "fetchedAt": 1773936724797,
-    "expiresAt": 1773936754797,
-    "staleUntil": 1773937324797
+    "fetchedAt": 1773937476563,
+    "expiresAt": 1773937506563,
+    "staleUntil": 1773938076563
   }
 }
