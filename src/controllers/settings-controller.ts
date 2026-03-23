@@ -16,6 +16,7 @@ import * as net from 'node:net';
 import { join } from 'node:path';
 import { env } from '../config/env.js';
 import { sendError, sendSuccess } from '../utils/responses.js';
+import { appendTimelineEvent } from '../services/timeline-service.js';
 import { getAlertThresholds, updateAlertThresholds, type AlertThresholds } from '../services/settings-service.js';
 
 /** 服务启动时间（进程启动时记录） */
@@ -26,16 +27,37 @@ const GATEWAY_WS_URL = 'ws://127.0.0.1:18789';
 const GATEWAY_PING_TIMEOUT_MS = 2000;
 const SSE_DEFAULT_URL = 'http://127.0.0.1:3030/api/v1/events';
 
+function getVersion(): string {
+  return process.env.npm_package_version ?? 'unknown';
+}
+
+function getUptimeSeconds(): number {
+  return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+}
+
+function toLegacyAlertThresholds(alertThresholds: AlertThresholds) {
+  return {
+    ...alertThresholds,
+    contextPressurePct: alertThresholds.contextPressurePercent,
+    dailyCostUSD: alertThresholds.costDailyUSD,
+  };
+}
+
 export async function getSettings(_req: Request, res: Response, next: NextFunction) {
   try {
     const alertThresholds = await getAlertThresholds();
+    const uptime = getUptimeSeconds();
     const settings = {
       readonlyMode: env.readonlyMode,
       tokenEnabled: env.consoleToken.length > 0,
+      tokenAuth: env.consoleToken.length > 0,
       dryRunEnabled: env.dryRunDefault,
-      version: process.env.npm_package_version ?? 'unknown',
+      dryRun: env.dryRunDefault,
+      version: getVersion(),
       startedAt,
-      alertThresholds,
+      uptime,
+      uptimeLabel: formatUptime(uptime * 1000),
+      alertThresholds: toLegacyAlertThresholds(alertThresholds),
     };
     return sendSuccess(res, settings);
   } catch (error) {
@@ -45,10 +67,18 @@ export async function getSettings(_req: Request, res: Response, next: NextFuncti
 
 export async function updateAlertSettings(req: Request, res: Response, next: NextFunction) {
   try {
-    const payload = req.body?.alertThresholds;
-    if (!payload || typeof payload !== 'object') {
+    const rawPayload = req.body?.alertThresholds && typeof req.body.alertThresholds === 'object'
+      ? req.body.alertThresholds
+      : req.body;
+    if (!rawPayload || typeof rawPayload !== 'object') {
       return sendError(res, 400, 'INVALID_ALERT_THRESHOLDS', 'alertThresholds object is required');
     }
+
+    const payload = {
+      contextPressurePercent: rawPayload.contextPressurePercent ?? rawPayload.contextPressurePct,
+      agentIdleMinutes: rawPayload.agentIdleMinutes,
+      costDailyUSD: rawPayload.costDailyUSD ?? rawPayload.dailyCostUSD,
+    } satisfies Partial<AlertThresholds>;
 
     const numericKeys: Array<keyof AlertThresholds> = [
       'contextPressurePercent',
@@ -75,14 +105,19 @@ export async function updateAlertSettings(req: Request, res: Response, next: Nex
       return sendSuccess(res, {
         dryRun: true,
         message: '这是预演模式（dry-run）结果，没有实际写入 alert-config.json。如需实际保存，请设置 dryRun=false',
-        current,
-        next: preview,
+        current: toLegacyAlertThresholds(current),
+        next: toLegacyAlertThresholds(preview),
       });
     }
 
     const alertThresholds = await updateAlertThresholds(payload);
+    await appendTimelineEvent({
+      type: 'settings_alert_thresholds_updated',
+      summary: '告警阈值配置已更新',
+      data: toLegacyAlertThresholds(alertThresholds),
+    });
     return sendSuccess(res, {
-      alertThresholds,
+      alertThresholds: toLegacyAlertThresholds(alertThresholds),
       dryRun: false,
       message: '告警阈值配置已更新并持久化到 data/alert-config.json',
     });
@@ -279,8 +314,10 @@ export async function securitySummary(_req: Request, res: Response, next: NextFu
       suggestions,
       config: {
         tokenEnabled,
+        tokenAuth: tokenEnabled,
         readonlyMode,
         dryRunDefault,
+        dryRun: dryRunDefault,
       },
     });
   } catch (error) {
@@ -307,11 +344,14 @@ export async function updateStatus(_req: Request, res: Response, next: NextFunct
       // ignore
     }
 
+    const uptime = getUptimeSeconds();
+
     return sendSuccess(res, {
       currentVersion,
+      version: currentVersion,
       startedAt,
-      uptime: Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
-      uptimeLabel: formatUptime(Date.now() - new Date(startedAt).getTime()),
+      uptime,
+      uptimeLabel: formatUptime(uptime * 1000),
       channel: 'stable',
       updateCheckAvailable: false,
       note: '自动更新检查暂未实装，请手动检查 npm 版本或 GitHub Release',

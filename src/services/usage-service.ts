@@ -7,8 +7,8 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getFileReader } from '../data/file-reader.js';
+import { getAlertThresholds } from './settings-service.js';
 import { resolveAgentDisplayName } from '../utils/agent-display-name.js';
-import { log } from '../utils/logger.js';
 
 const OPENCLAW_ROOT = '/root/.openclaw';
 const AGENTS_DIR = join(OPENCLAW_ROOT, 'agents');
@@ -23,9 +23,21 @@ const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   'claude-3-5': 200000,
   'claude-sonnet': 200000,
   'claude-opus': 200000,
-  'codex': 200000,
+  codex: 200000,
   default: 128000,
 };
+
+export interface UsageQueryWindow {
+  period?: string;
+  from?: number | string | null;
+  to?: number | string | null;
+}
+
+export interface ResolvedUsageWindow {
+  period: string;
+  fromTs: number;
+  toTs: number;
+}
 
 function getContextWindow(model?: string): number {
   if (!model) return MODEL_CONTEXT_WINDOWS.default;
@@ -33,6 +45,49 @@ function getContextWindow(model?: string): number {
     if (model.toLowerCase().includes(key.toLowerCase())) return size;
   }
   return MODEL_CONTEXT_WINDOWS.default;
+}
+
+function parseTimestamp(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num)) return null;
+  return num > 1e12 ? Math.floor(num) : Math.floor(num * 1000);
+}
+
+export function resolveUsageWindow(query: UsageQueryWindow = {}): ResolvedUsageWindow {
+  const now = Date.now();
+  const fromTs = parseTimestamp(query.from);
+  const toTs = parseTimestamp(query.to);
+
+  if (fromTs !== null || toTs !== null) {
+    const safeToTs = toTs ?? now;
+    const safeFromTs = fromTs ?? Math.max(0, safeToTs - 24 * 60 * 60 * 1000);
+    const normalizedFrom = Math.min(safeFromTs, safeToTs);
+    const normalizedTo = Math.max(safeFromTs, safeToTs);
+    return {
+      period: 'custom',
+      fromTs: normalizedFrom,
+      toTs: normalizedTo,
+    };
+  }
+
+  const period = typeof query.period === 'string' ? query.period : 'today';
+  if (period === 'month') {
+    return { period, fromTs: now - 30 * 24 * 60 * 60 * 1000, toTs: now };
+  }
+  if (period === 'week') {
+    return { period, fromTs: now - 7 * 24 * 60 * 60 * 1000, toTs: now };
+  }
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  return { period: 'today', fromTs: startOfToday.getTime(), toTs: now };
+}
+
+function isTimestampInWindow(timestamp: string | undefined, window: ResolvedUsageWindow): boolean {
+  if (!timestamp) return true;
+  const ts = new Date(timestamp).getTime();
+  if (Number.isNaN(ts)) return true;
+  return ts >= window.fromTs && ts <= window.toTs;
 }
 
 // CC 借鉴 P0-5：Model 维度用量细分
@@ -75,7 +130,7 @@ function estimateTokens(text: string): number {
 
 async function readAgentSessionData(
   agentId: string,
-  period: string
+  window: ResolvedUsageWindow
 ): Promise<{
   tokenIn: number;
   tokenOut: number;
@@ -84,6 +139,7 @@ async function readAgentSessionData(
   sessionCount: number;
   estimated: boolean;
   recentSessionSizeTokens: number;
+  latestSessionSizeTokens: number;
   modelBreakdown: Record<string, ModelUsageStat>;
 }> {
   const sessionsDir = join(AGENTS_DIR, agentId, 'sessions');
@@ -94,6 +150,8 @@ async function readAgentSessionData(
   let sessionCount = 0;
   let estimated = false;
   let recentSessionSizeTokens = 0;
+  let latestSessionSizeTokens = 0;
+  let latestSessionMtimeMs = 0;
   const modelBreakdown: Record<string, ModelUsageStat> = {};
 
   try {
@@ -102,28 +160,25 @@ async function readAgentSessionData(
       (f) => f.endsWith('.jsonl') && !f.includes('.deleted') && !f.includes('.reset')
     );
 
-    const cutoff =
-      period === 'today'
-        ? new Date(Date.now() - 24 * 60 * 60 * 1000)
-        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
     for (const file of jsonlFiles) {
       try {
-        const fileStat = await stat(join(sessionsDir, file)).catch(() => null);
+        const filePath = join(sessionsDir, file);
+        const fileStat = await stat(filePath).catch(() => null);
         if (!fileStat) continue;
 
-        const raw = await readFile(join(sessionsDir, file), 'utf-8');
+        const raw = await readFile(filePath, 'utf-8');
         const lines = raw.split('\n').filter(Boolean);
         if (!lines.length) continue;
 
-        sessionCount++;
         let fileHasExactTokens = false;
+        let fileMatchedWindow = false;
 
         for (const line of lines) {
           try {
             const entry = JSON.parse(line);
-            const ts = entry.timestamp ? new Date(entry.timestamp) : null;
-            if (ts && ts < cutoff) continue;
+            const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : undefined;
+            if (!isTimestampInWindow(timestamp, window)) continue;
+            fileMatchedWindow = true;
 
             if (entry.type === 'message' && entry.message?.usage) {
               const usage = entry.message.usage;
@@ -138,7 +193,6 @@ async function readAgentSessionData(
                 totalToken += tTotal;
                 costEstimateUSD += cost;
                 fileHasExactTokens = true;
-                // Track model breakdown
                 if (!modelBreakdown[entryModel]) {
                   modelBreakdown[entryModel] = { tokenIn: 0, tokenOut: 0, totalToken: 0, costEstimateUSD: 0 };
                 }
@@ -164,6 +218,10 @@ async function readAgentSessionData(
           }
         }
 
+        if (!fileMatchedWindow) continue;
+
+        sessionCount++;
+
         // If no exact token data, estimate from raw content
         if (!fileHasExactTokens) {
           const estTokens = estimateTokens(raw);
@@ -173,9 +231,17 @@ async function readAgentSessionData(
           estimated = true;
         }
 
-        // Track most recent session size for context pressure
-        if (fileStat.mtimeMs > Date.now() - 60 * 60 * 1000) {
-          recentSessionSizeTokens = Math.max(recentSessionSizeTokens, estimateTokens(raw));
+        const sessionSizeTokens = estimateTokens(raw);
+
+        // Keep backward-compatible window-local size for historic views
+        if (fileStat.mtimeMs >= window.fromTs && fileStat.mtimeMs <= window.toTs) {
+          recentSessionSizeTokens = Math.max(recentSessionSizeTokens, sessionSizeTokens);
+        }
+
+        // Context pressure should reflect current/latest session, not a window aggregate
+        if (fileStat.mtimeMs >= latestSessionMtimeMs) {
+          latestSessionMtimeMs = fileStat.mtimeMs;
+          latestSessionSizeTokens = sessionSizeTokens;
         }
       } catch {
         // skip unreadable files
@@ -192,7 +258,6 @@ async function readAgentSessionData(
     // agent sessions dir not accessible
   }
 
-  // Round modelBreakdown costs
   for (const key of Object.keys(modelBreakdown)) {
     modelBreakdown[key].costEstimateUSD = Number(modelBreakdown[key].costEstimateUSD.toFixed(6));
   }
@@ -205,23 +270,27 @@ async function readAgentSessionData(
     sessionCount,
     estimated,
     recentSessionSizeTokens,
+    latestSessionSizeTokens,
     modelBreakdown,
   };
 }
 
-export async function getUsageByAgent(period = 'today'): Promise<{
+export async function getUsageByAgent(query: UsageQueryWindow = {}): Promise<{
   data: AgentUsageDetail[];
   period: string;
   generatedAt: string;
+  from: number;
+  to: number;
 }> {
   const fileReader = getFileReader();
   const agentConfigs = await fileReader.listAgentConfigs().catch(() => []);
+  const window = resolveUsageWindow(query);
 
   const results: AgentUsageDetail[] = [];
 
   await Promise.all(
     agentConfigs.map(async (agent) => {
-      const sessionData = await readAgentSessionData(agent.id, period);
+      const sessionData = await readAgentSessionData(agent.id, window);
       const displayName = resolveAgentDisplayName(agent.id, agent.identity?.name, agent.name);
       const model = agent.model?.primary ?? 'unknown';
 
@@ -240,35 +309,38 @@ export async function getUsageByAgent(period = 'today'): Promise<{
     })
   );
 
-  // Sort by total tokens descending
   results.sort((a, b) => b.totalToken - a.totalToken);
 
   return {
     data: results,
-    period,
+    period: window.period,
     generatedAt: new Date().toISOString(),
+    from: window.fromTs,
+    to: window.toTs,
   };
 }
 
-// CC 借鉴 P0-5：按 model 维度汇总用量
 export interface ModelUsageAggregated extends ModelUsageStat {
   model: string;
   agentCount: number;
 }
 
-export async function getUsageByModel(period = 'today'): Promise<{
+export async function getUsageByModel(query: UsageQueryWindow = {}): Promise<{
   data: ModelUsageAggregated[];
   period: string;
   generatedAt: string;
+  from: number;
+  to: number;
 }> {
   const fileReader = getFileReader();
   const agentConfigs = await fileReader.listAgentConfigs().catch(() => []);
+  const window = resolveUsageWindow(query);
 
   const modelMap: Record<string, ModelUsageAggregated> = {};
 
   await Promise.all(
     agentConfigs.map(async (agent) => {
-      const sessionData = await readAgentSessionData(agent.id, period);
+      const sessionData = await readAgentSessionData(agent.id, window);
       for (const [modelName, stats] of Object.entries(sessionData.modelBreakdown)) {
         if (!modelMap[modelName]) {
           modelMap[modelName] = { model: modelName, tokenIn: 0, tokenOut: 0, totalToken: 0, costEstimateUSD: 0, agentCount: 0 };
@@ -282,34 +354,46 @@ export async function getUsageByModel(period = 'today'): Promise<{
     })
   );
 
-  // Round costs and sort by total tokens desc
   const data = Object.values(modelMap).map((item) => ({
     ...item,
     costEstimateUSD: Number(item.costEstimateUSD.toFixed(6)),
   })).sort((a, b) => b.totalToken - a.totalToken);
 
-  return { data, period, generatedAt: new Date().toISOString() };
+  return { data, period: window.period, generatedAt: new Date().toISOString(), from: window.fromTs, to: window.toTs };
 }
 
-export async function getContextPressure(): Promise<{
+export async function getContextPressure(query: UsageQueryWindow = {}): Promise<{
   data: ContextPressureItem[];
+  period: string;
+  generatedAt: string;
+  from: number;
+  to: number;
 }> {
   const fileReader = getFileReader();
   const agentConfigs = await fileReader.listAgentConfigs().catch(() => []);
+  const window = resolveUsageWindow(query);
+  const thresholds = await getAlertThresholds().catch(() => ({ contextPressurePercent: 80 }));
+  const overThresholdRatio = Math.max(0, thresholds.contextPressurePercent) / 100;
+  const warnThresholdRatio = Math.max(0, Math.min(overThresholdRatio * 0.75, overThresholdRatio));
 
   const results: ContextPressureItem[] = [];
 
   await Promise.all(
     agentConfigs.map(async (agent) => {
-      const sessionData = await readAgentSessionData(agent.id, 'today');
+      const sessionData = await readAgentSessionData(agent.id, window);
       const model = agent.model?.primary ?? 'unknown';
       const contextWindowMax = getContextWindow(model);
-      const contextUsedEstimate = sessionData.recentSessionSizeTokens || Math.min(sessionData.totalToken, contextWindowMax);
+      const rawContextUsedEstimate = sessionData.latestSessionSizeTokens
+        || sessionData.recentSessionSizeTokens
+        || Math.min(sessionData.totalToken, contextWindowMax);
+      const contextUsedEstimate = contextWindowMax > 0
+        ? Math.min(rawContextUsedEstimate, contextWindowMax)
+        : rawContextUsedEstimate;
       const pressureRatio = contextWindowMax > 0 ? contextUsedEstimate / contextWindowMax : 0;
 
       let level: 'normal' | 'warning' | 'critical' = 'normal';
-      if (pressureRatio >= 0.8) level = 'critical';
-      else if (pressureRatio >= 0.5) level = 'warning';
+      if (pressureRatio >= overThresholdRatio) level = 'critical';
+      else if (pressureRatio >= warnThresholdRatio) level = 'warning';
 
       results.push({
         agentId: agent.id,
@@ -322,8 +406,13 @@ export async function getContextPressure(): Promise<{
     })
   );
 
-  // Sort by pressureRatio descending
   results.sort((a, b) => b.pressureRatio - a.pressureRatio);
 
-  return { data: results };
+  return {
+    data: results,
+    period: window.period,
+    generatedAt: new Date().toISOString(),
+    from: window.fromTs,
+    to: window.toTs,
+  };
 }

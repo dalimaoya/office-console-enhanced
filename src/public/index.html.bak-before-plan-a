@@ -7,22 +7,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>办公增强控制台</title>
-    <link rel="stylesheet" href="/assets/tokens.css" />
     <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="stylesheet" href="/assets/tokens.css" />
   </head>
   <body>
     <div class="shell">
-      <aside class="sidebar" role="navigation" aria-label="主导航">
+      <aside class="sidebar">
         <div class="sidebar-header">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-            <div style="width:36px;height:36px;border-radius:10px;background:#F97316;display:flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true">
-              <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            </div>
-            <div>
-              <p class="eyebrow" style="margin-bottom:1px">OpenClaw</p>
-              <h1 style="margin:0">办公增强控制台</h1>
-            </div>
-          </div>
+          <p class="eyebrow">OpenClaw</p>
+          <h1>办公增强控制台</h1>
           <p class="sidebar-copy">多角色协作控制台，覆盖 8 大功能分区。</p>
         </div>
         <nav class="nav" id="main-nav">
@@ -90,19 +83,8 @@
             <h2 id="page-title">总览</h2>
           </div>
           <div class="topbar-status">
-            <!-- 心跳指示灯 (Ekko建议#3) -->
-            <div class="heartbeat-indicator" id="heartbeat-indicator" title="系统在线状态">
-              <span class="heartbeat-dot" id="heartbeat-dot"></span>
-              <span id="heartbeat-label">系统在线</span>
-            </div>
-            <!-- 搜索框，支持 / 快捷键 (Ekko建议#3) -->
-            <button id="search-trigger" class="topbar-search-btn" title="搜索（/）" aria-label="搜索 agent/任务/会话">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-              <span>搜索 agent / 任务...</span>
-              <kbd>/</kbd>
-            </button>
             <div class="notification-bell-wrap">
-              <button class="notification-bell" id="notification-bell-btn" title="通知中心" aria-label="通知中心">
+              <button class="notification-bell" id="notification-bell-btn" title="通知中心">
                 🔔
                 <span class="notification-badge" id="notification-badge" style="display:none">0</span>
               </button>
@@ -117,6 +99,20 @@
               </div>
             </div>
             <button class="theme-toggle-btn" id="theme-toggle-btn" title="切换明暗主题">🌓</button>
+            <div class="status-strip" id="status-strip">
+              <span class="status-strip-item" id="strip-connection" title="服务连接">🟢 已连接</span>
+              <span class="status-strip-sep">·</span>
+              <span class="status-strip-item" id="strip-agents" title="Agent状态">— Agent</span>
+              <span class="status-strip-sep">·</span>
+              <span class="status-strip-item" id="strip-security" title="安全模式">🔒 只读</span>
+              <span class="status-strip-sep">·</span>
+              <span class="status-strip-item" id="strip-version" title="版本">v—</span>
+            </div>
+            <button id="search-trigger" class="search-trigger-btn" title="搜索（Cmd+K）">
+              <span>🔍</span>
+              <span>搜索 agent/任务/会话...</span>
+              <kbd class="search-trigger-kbd">⌘K</kbd>
+            </button>
             <span id="readonly-mode-pill" class="pill neutral" title="安全模式状态">🔒 只读</span>
             <span id="health-pill" class="pill neutral">等待检查</span>
             <span id="sse-status" class="pill neutral" title="SSE 连接状态">🟡 连接中</span>
@@ -125,250 +121,159 @@
               <span id="cache-status" class="cache-status-indicator neutral" title="缓存状态">cache: --</span>
             </div>
             <button id="refresh-page" class="primary-button">
-              <span class="button-text">强制刷新</span>
+              <span class="button-text">强制重新加载</span>
               <span id="refresh-spinner" class="refresh-spinner" style="display: none;">⟳</span>
             </button>
           </div>
         </header>
 
-        <!-- ── 总览（Overview）：Plan A 暖色结构化 ── -->
+        <!-- ── 总览（Overview）：迁移自 Dashboard ── -->
         <section id="overview-page" class="page active">
+          <div class="page-subtitle">最适合：快速了解当前 AI 团队整体状态</div>
+          <div class="hero-stage"><div class="hero-title">办公增强控制台</div><div class="hero-subtitle">OpenClaw 多智能体工作台 · 实时运行状态</div></div>
           <div class="connection-health-card" id="connection-health-card" style="display:none">
             <div class="health-card-icon">⚠️</div>
             <div class="health-card-body">
               <div class="health-card-title" id="health-card-title">部分集成未连接</div>
               <div class="health-card-desc" id="health-card-desc">飞书通知未配置，连接后可接收 Agent 工作通知</div>
             </div>
-            <button class="health-card-action" id="connection-health-action-btn" onclick="if(window.navigateTo){window.navigateTo('settings');}">去配置 →</button>
+            <a href="#settings" class="health-card-action" id="connection-health-action-btn" onclick="if(window.navigateTo){event.preventDefault();window.navigateTo('settings');}">去配置 →</a>
           </div>
           <!-- 系统状态摘要行 -->
-          <div class="status-headline" id="overview-status-headline" style="display:flex;align-items:center;gap:8px;margin-bottom:var(--space-md)">
+          <div class="status-headline" id="overview-status-headline">
             <span class="badge running" id="system-status-badge">系统检查中…</span>
             <span class="muted" id="system-status-meta" style="font-size:var(--text-xs)"></span>
-            <button class="ghost-button" onclick="exportSnapshot()" style="margin-left:auto;font-size:12px">📥 导出快照</button>
           </div>
-
-          <!-- ── KPI 网格（Plan A 5卡：含 Token 用量，Ekko建议#2）────────── -->
-          <div class="kpi-grid-plan-a" id="overview-kpi-grid" style="margin-bottom:var(--space-lg)">
-            <!-- KPI 1: 活跃 Agent -->
-            <div class="kpi-card-a">
-              <div class="kpi-icon icon-info" aria-hidden="true">🤖</div>
+          <div class="snapshot-actions">
+            <button class="secondary-button" onclick="exportSnapshot()">📥 导出快照</button>
+          </div>
+          <!-- KPI 网格 -->
+          <div class="kpi-grid" id="overview-kpi-grid" style="margin-bottom:var(--space-lg)">
+            <div class="kpi-card tone-ok">
               <div class="kpi-label">活跃 Agent</div>
-              <div class="kpi-num" id="kpi-active-agents" data-counter-target="0">0</div>
-              <div class="kpi-sub" id="kpi-active-agents-meta">共 0 个</div>
-              <!-- sparkline (Ekko建议#3) -->
-              <div class="kpi-sparkline-a" id="kpi-agents-sparkline" aria-hidden="true">
-                <span class="s-info" style="height:40%"></span>
-                <span class="s-info" style="height:55%"></span>
-                <span class="s-info" style="height:70%"></span>
-                <span class="s-info" style="height:60%"></span>
-                <span class="s-info" style="height:80%"></span>
-                <span class="s-info" style="height:90%"></span>
-                <span class="s-info" style="height:100%"></span>
-              </div>
+              <div class="kpi-value" id="kpi-active-agents" data-counter-target="0">0</div>
+              <div class="kpi-meta" id="kpi-active-agents-meta">共 0 个</div>
             </div>
-            <!-- KPI 2: 进行中任务 -->
-            <div class="kpi-card-a" id="kpi-card-tasks">
-              <div class="kpi-icon icon-brand" aria-hidden="true">📋</div>
+            <div class="kpi-card tone-ok" id="kpi-card-tasks">
               <div class="kpi-label">进行中任务</div>
-              <div class="kpi-num" id="kpi-tasks" data-counter-target="0">0</div>
-              <div class="kpi-sub" id="kpi-tasks-meta">0 阻塞</div>
-              <div class="kpi-sparkline-a" id="kpi-tasks-sparkline" aria-hidden="true">
-                <span class="s-brand" style="height:50%"></span>
-                <span class="s-brand" style="height:65%"></span>
-                <span class="s-brand" style="height:80%"></span>
-                <span class="s-brand" style="height:70%"></span>
-                <span class="s-brand" style="height:90%"></span>
-                <span class="s-brand" style="height:75%"></span>
-                <span class="s-brand" style="height:100%"></span>
-              </div>
+              <div class="kpi-value" id="kpi-tasks" data-counter-target="0">0</div>
+              <div class="kpi-meta" id="kpi-tasks-meta">0 阻塞</div>
             </div>
-            <!-- KPI 3: 阻塞项 -->
-            <div class="kpi-card-a kpi-blocker-a" id="kpi-card-queue">
-              <div class="kpi-icon icon-error" aria-hidden="true">⚠️</div>
-              <div class="kpi-label">阻塞项</div>
-              <div class="kpi-num color-error" id="kpi-queue" data-counter-target="0">0</div>
-              <div class="kpi-sub" id="kpi-queue-meta" style="color:#DC2626">需立即处理</div>
+            <div class="kpi-card tone-ok">
+              <div class="kpi-label">今日用量</div>
+              <div class="kpi-value" id="kpi-usage" data-counter-target="0">0</div>
+              <div class="kpi-meta" id="kpi-usage-meta">tokens</div>
             </div>
-            <!-- KPI 4: Token 用量（Ekko建议#2：新增替换完成率）-->
-            <div class="kpi-card-a">
-              <div class="kpi-icon icon-neutral" aria-hidden="true">📊</div>
-              <div class="kpi-label">今日 Token 用量</div>
-              <div class="kpi-num" id="kpi-usage" data-counter-target="0">0</div>
-              <div class="kpi-sub" id="kpi-usage-meta">tokens · 0 角色</div>
-              <div class="kpi-sparkline-a" id="kpi-usage-sparkline" aria-hidden="true">
-                <span class="s-muted" style="height:30%"></span>
-                <span class="s-muted" style="height:45%"></span>
-                <span class="s-muted" style="height:60%"></span>
-                <span class="s-muted" style="height:50%"></span>
-                <span class="s-muted" style="height:70%"></span>
-                <span class="s-muted" style="height:85%"></span>
-                <span class="s-brand" style="height:100%"></span>
-              </div>
-            </div>
-            <!-- KPI 5: Gateway 状态 -->
-            <div class="kpi-card-a" id="kpi-card-gateway">
-              <div class="kpi-icon icon-ok" aria-hidden="true">🔌</div>
+            <div class="kpi-card tone-ok" id="kpi-card-gateway">
               <div class="kpi-label">Gateway 状态</div>
-              <div class="kpi-num" id="kpi-gateway" style="font-size:20px">—</div>
-              <div class="kpi-sub" id="kpi-gateway-meta">检查中</div>
+              <div class="kpi-value" id="kpi-gateway" style="font-size:20px">—</div>
+              <div class="kpi-meta" id="kpi-gateway-meta">检查中</div>
+            </div>
+            <div class="kpi-card tone-ok" id="kpi-card-queue">
+              <div class="kpi-label">待处理事项</div>
+              <div class="kpi-value" id="kpi-queue" data-counter-target="0">0</div>
+              <div class="kpi-meta" id="kpi-queue-meta">待处理</div>
             </div>
           </div>
-          <!-- ── Plan A 双栏布局：主内容 + 右栏 ─────────────────────────── -->
-          <div class="overview-2col">
-
-            <!-- ── 左栏（主区）── -->
-            <div style="display:flex;flex-direction:column;gap:var(--space-lg)">
-
-              <!-- 活跃对象注册表（P1，提前到快速上手之上：Ekko建议#1）-->
-              <section class="panel" id="registry-panel">
-                <div class="panel-head">
-                  <h3>活跃对象 <em>— 对象注册表</em></h3>
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <button class="ghost-button" onclick="loadRegistryView()">刷新</button>
-                    <button class="ghost-button" id="registry-toggle-btn" onclick="toggleCollapsiblePanel('registry')">展开 ▼</button>
-                  </div>
-                </div>
-                <div id="registry-panel-body" class="stack gap-sm">
-                  <div id="registry-list" class="stack gap-sm">
-                    <div class="state-box loading">加载中…</div>
-                  </div>
-                </div>
-              </section>
-
-              <!-- 冷启动快照（上下文）-->
-              <section class="panel" id="cold-start-panel">
-                <div class="panel-head">
-                  <h3>快速上下文 <em>— 冷启动快照</em></h3>
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <span class="muted" id="cold-start-refresh-hint" style="font-size:var(--text-xs)">每5分钟自动刷新</span>
-                    <button class="ghost-button" onclick="loadColdStart()">刷新</button>
-                  </div>
-                </div>
-                <div id="cold-start-content" class="stack gap-sm">
-                  <div class="muted">加载中…</div>
-                </div>
-              </section>
-
-              <!-- 系统概览 + 健康状态 -->
-              <div id="dashboard-state" class="state-box loading">Dashboard 加载中…</div>
-              <div class="grid two-up">
-                <section class="panel metric-panel">
-                  <div class="panel-head"><h3>系统概览 <em>— 实时状态汇总</em></h3><span id="dashboard-meta" class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">尚未加载</span></div>
-                  <div class="metrics" id="dashboard-metrics"></div>
-                </section>
-                <section class="panel">
-                  <div class="panel-head"><h3>健康状态 <em>— 组件可达性检查</em></h3><button id="refresh-health" class="ghost-button">刷新</button></div>
-                  <div id="health-state" class="stack gap-sm"></div>
-                </section>
+          <!-- ── 三期：快速上下文卡片（冷启动快照） ── -->
+          <section class="panel" id="cold-start-panel">
+            <div class="panel-head">
+              <h3>快速上下文 <em>— 冷启动快照</em></h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="muted" id="cold-start-refresh-hint" style="font-size:var(--text-xs)">每5分钟自动刷新</span>
+                <button class="ghost-button" onclick="loadColdStart()">刷新</button>
               </div>
+            </div>
+            <div id="cold-start-content" class="stack gap-sm">
+              <div class="muted">加载中…</div>
+            </div>
+          </section>
 
-              <!-- 工作区活动 + 告警摘要 -->
-              <div class="grid two-up">
-                <section class="panel">
-                  <div class="panel-head"><h3>工作区活动 <em>— 当前工作区快照</em></h3></div>
-                  <div id="workspace-list" class="stack"></div>
-                </section>
-                <section class="panel">
-                  <div class="panel-head"><h3>告警摘要 <em>— 未处理告警</em></h3></div>
-                  <div id="alerts-list" class="stack"></div>
-                </section>
+          <!-- 项目阶段卡片（Phase2：项目状态机） -->
+          <section class="panel" id="project-status-panel">
+            <div class="panel-head">
+              <h3>项目阶段 <em>— 状态机</em></h3>
+              <button class="ghost-button" onclick="loadProjectStatus()">刷新</button>
+            </div>
+            <div id="project-status-card-body" class="stack gap-sm">
+              <div class="muted">加载中…</div>
+            </div>
+          </section>
+
+          <!-- 需要关注：待办/异常聚合 -->
+          <section class="panel" id="action-queue-panel">
+            <div class="panel-head">
+              <h3>需要关注 <em>— 待办/异常聚合</em></h3>
+              <button id="refresh-action-queue" class="ghost-button">刷新</button>
+            </div>
+            <div id="action-queue-content" class="stack gap-sm">
+              <div class="muted">加载中…</div>
+            </div>
+          </section>
+          <div id="dashboard-state" class="state-box loading">Dashboard 加载中…</div>
+          <div class="grid two-up">
+            <section class="panel metric-panel">
+              <div class="panel-head"><h3>系统概览 <em>— 实时状态汇总</em></h3><span id="dashboard-meta" class="muted">尚未加载</span></div>
+              <div class="metrics" id="dashboard-metrics"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head"><h3>健康状态 <em>— 组件可达性检查</em></h3><button id="refresh-health" class="ghost-button">刷新</button></div>
+              <div id="health-state" class="stack gap-sm"></div>
+            </section>
+          </div>
+          <div class="grid two-up">
+            <section class="panel">
+              <div class="panel-head"><h3>工作区活动 <em>— 当前工作区快照</em></h3></div>
+              <div id="workspace-list" class="stack"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head"><h3>告警摘要 <em>— 未处理告警</em></h3></div>
+              <div id="alerts-list" class="stack"></div>
+            </section>
+          </div>
+          <!-- ── 活跃对象注册表（默认折叠） ── -->
+          <section class="panel" id="registry-panel">
+            <div class="panel-head">
+              <h3>活跃对象 <em>— 对象注册表</em></h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="ghost-button" onclick="loadRegistryView()">刷新</button>
+                <button class="ghost-button" id="registry-toggle-btn" onclick="toggleCollapsiblePanel('registry')">展开 ▼</button>
               </div>
-
-              <!-- 快速上手（P2 优先级，下移至活跃对象之后：Ekko建议#1）-->
-              <section class="quickstart-card" id="quickstart-section" aria-label="快速上手">
-                <div class="quickstart-header" onclick="toggleQuickStart()" role="button" tabindex="0" aria-expanded="true" aria-controls="quickstart-body">
-                  <span class="quickstart-title">🚀 快速上手</span>
-                  <div class="quickstart-progress-wrap">
-                    <div class="quickstart-bar"><div class="quickstart-bar-fill" id="qs-bar" style="width:60%"></div></div>
-                    <span class="quickstart-label" id="qs-label">3/5 完成</span>
-                    <button class="quickstart-toggle" id="qs-toggle-btn" onclick="event.stopPropagation();toggleQuickStart()">收起 ▲</button>
-                  </div>
-                </div>
-                <div class="quickstart-body" id="quickstart-body">
-                  <div class="quickstart-step done">
-                    <div class="quickstart-step-icon">✓</div>
-                    <span class="quickstart-step-text">创建第一个项目</span>
-                  </div>
-                  <div class="quickstart-step done">
-                    <div class="quickstart-step-icon">✓</div>
-                    <span class="quickstart-step-text">连接飞书通知</span>
-                  </div>
-                  <div class="quickstart-step done">
-                    <div class="quickstart-step-icon">✓</div>
-                    <span class="quickstart-step-text">配置 Agent 角色</span>
-                  </div>
-                  <div class="quickstart-step active" tabindex="0" onclick="if(window.navigateTo)window.navigateTo('settings')">
-                    <div class="quickstart-step-icon"></div>
-                    <span class="quickstart-step-text">设置自动化规则</span>
-                    <svg width="14" height="14" fill="none" stroke="#94A3B8" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                  </div>
-                  <div class="quickstart-step pending" tabindex="0">
-                    <div class="quickstart-step-icon"></div>
-                    <span class="quickstart-step-text">邀请团队成员</span>
-                    <svg width="14" height="14" fill="none" stroke="#94A3B8" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                  </div>
-                </div>
-              </section>
-
-            </div><!-- end 左栏 -->
-
-            <!-- ── 右栏 ── -->
-            <div style="display:flex;flex-direction:column;gap:var(--space-lg)">
-
-              <!-- 需要关注（阻塞项聚合，右栏顶部）-->
-              <section class="panel" id="action-queue-panel" style="border-top:3px solid #EF4444">
-                <div class="panel-head">
-                  <h3>需要关注 <em>— 待办/异常聚合</em></h3>
-                  <button id="refresh-action-queue" class="ghost-button">刷新</button>
-                </div>
-                <div id="action-queue-content" class="stack gap-sm">
-                  <div class="muted">加载中…</div>
-                </div>
-              </section>
-
-              <!-- 项目阶段（Phase2：项目状态机）-->
-              <section class="panel" id="project-status-panel">
-                <div class="panel-head">
-                  <h3>项目阶段 <em>— 状态机</em></h3>
-                  <button class="ghost-button" onclick="loadProjectStatus()">刷新</button>
-                </div>
-                <div id="project-status-card-body" class="stack gap-sm">
-                  <div class="muted">加载中…</div>
-                </div>
-              </section>
-
-              <!-- 事件日志（右栏底部）-->
-              <section class="panel" id="eventlog-panel">
-                <div class="panel-head">
-                  <h3>事件日志 <em>— 最近系统事件</em></h3>
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <select id="eventlog-type-filter" class="select-sm" onchange="loadEventLogView()">
-                      <option value="">全部类型</option>
-                      <option value="system">system</option>
-                      <option value="role">role</option>
-                      <option value="object">object</option>
-                      <option value="security">security</option>
-                    </select>
-                    <button class="ghost-button" onclick="loadEventLogView()">刷新</button>
-                    <button class="ghost-button" id="eventlog-toggle-btn" onclick="toggleCollapsiblePanel('eventlog')">展开 ▼</button>
-                  </div>
-                </div>
-                <div id="eventlog-panel-body">
-                  <div style="display:flex;align-items:center;gap:8px;padding:8px 0 6px 0;border-bottom:1px solid #F1F5F9;margin-bottom:8px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer">
-                      <input type="checkbox" id="eventlog-show-healthcheck" onchange="loadEventLogView()" style="cursor:pointer">
-                      显示系统健康检查日志
-                    </label>
-                  </div>
-                  <div id="eventlog-list" class="stack gap-sm">
-                    <div class="state-box loading">加载中…</div>
-                  </div>
-                </div>
-              </section>
-
-            </div><!-- end 右栏 -->
-          </div><!-- end overview-2col -->
+            </div>
+            <div id="registry-panel-body" class="stack gap-sm" style="display:none">
+              <div id="registry-list" class="stack gap-sm">
+                <div class="state-box loading">加载中…</div>
+              </div>
+            </div>
+          </section>
+          <!-- ── 事件日志（Overview 卡片，默认折叠） ── -->
+          <section class="panel" id="eventlog-panel">
+            <div class="panel-head">
+              <h3>事件日志 <em>— 最近系统事件</em></h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="eventlog-type-filter" class="select-sm" onchange="loadEventLogView()">
+                  <option value="">全部类型</option>
+                  <option value="system">system</option>
+                  <option value="role">role</option>
+                  <option value="object">object</option>
+                  <option value="security">security</option>
+                </select>
+                <button class="ghost-button" onclick="loadEventLogView()">刷新</button>
+                <button class="ghost-button" id="eventlog-toggle-btn" onclick="toggleCollapsiblePanel('eventlog')">展开 ▼</button>
+              </div>
+            </div>
+            <div id="eventlog-panel-body" style="display:none">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 0 6px 0;border-bottom:1px solid var(--border-subtle,#e5e7eb);margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer">
+                  <input type="checkbox" id="eventlog-show-healthcheck" onchange="loadEventLogView()" style="cursor:pointer">
+                  显示系统健康检查日志
+                </label>
+              </div>
+              <div id="eventlog-list" class="stack gap-sm">
+                <div class="state-box loading">加载中…</div>
+              </div>
+            </div>
+          </section>
         </section>
 
         <!-- ── Agent 状态（Agents）── -->
@@ -480,7 +385,8 @@
 
         <!-- ── 用量（Usage）── -->
         <section id="usage-page" class="page">
-          <div id="usage-state" class="state-box loading" style="display:none">用量数据加载中…</div>
+          <div class="page-subtitle">最适合：了解 API 用量、成本和上下文压力</div>
+          <div id="usage-state" class="state-box loading">用量数据加载中…</div>
           <div id="budget-status-card" class="budget-status-card kpi-card" style="margin-bottom:var(--space-md)"></div>
           <!-- Segment Switch for time period -->
           <div class="segment-switch" id="usage-period-switch" style="margin-bottom:var(--space-lg)">
@@ -642,7 +548,7 @@
                 <p class="feishu-empty-state__title">飞书通知未配置</p>
                 <p class="feishu-empty-state__desc">连接飞书后可接收 Agent 工作通知，及时掌握任务进展</p>
               </div>
-              <button class="feishu-empty-state__cta" id="feishu-empty-state-cta" onclick="event.preventDefault();if(window._appState&&window._appState.route==='settings'){document.getElementById('feishu-alert-section')?.scrollIntoView({behavior:'smooth'});}else if(window.navigateTo){window.navigateTo('settings');}">去配置 →</button>
+              <a href="#feishu-alert-section" class="feishu-empty-state__cta btn btn--accent" id="feishu-empty-state-cta" onclick="if(window.navigateTo){event.preventDefault();if(window._appState&&window._appState.route==='settings'){document.getElementById('feishu-alert-section')?.scrollIntoView({behavior:'smooth'});}else{window.navigateTo('settings');}}">去配置</a>
             </div>
             <div id="feishu-notify-status" class="stack gap-sm">
               <div class="muted">加载中…</div>
@@ -813,141 +719,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Plan A: 移动端底部导航 -->
-    <nav class="mobile-bottom-nav-a" aria-label="移动导航" id="mobile-bottom-nav">
-      <button class="mobile-nav-btn active" data-route="overview" onclick="if(window.navigateTo)window.navigateTo('overview')" aria-label="总览" aria-current="page">
-        🏠
-        <span class="mobile-nav-label">总览</span>
-      </button>
-      <button class="mobile-nav-btn" data-route="agents" onclick="if(window.navigateTo)window.navigateTo('agents')" aria-label="Agent状态">
-        🤖
-        <span class="mobile-nav-label">Agent</span>
-      </button>
-      <button class="mobile-nav-btn" data-route="tasks" onclick="if(window.navigateTo)window.navigateTo('tasks')" aria-label="任务，含阻塞项" style="position:relative">
-        📋
-        <span class="mobile-nav-label">任务</span>
-        <span class="mobile-nav-badge" id="mobile-blocker-badge" style="display:none">0</span>
-      </button>
-      <button class="mobile-nav-btn" data-route="usage" onclick="if(window.navigateTo)window.navigateTo('usage')" aria-label="用量">
-        📊
-        <span class="mobile-nav-label">用量</span>
-      </button>
-      <button class="mobile-nav-btn" data-route="settings" onclick="if(window.navigateTo)window.navigateTo('settings')" aria-label="设置">
-        ⚙️
-        <span class="mobile-nav-label">设置</span>
-      </button>
-    </nav>
-
-    <script>
-    /* ── Plan A 补丁脚本 ── */
-
-    // 快速上手：可折叠（Ekko建议#1）
-    function toggleQuickStart() {
-      const body = document.getElementById('quickstart-body');
-      const btn  = document.getElementById('qs-toggle-btn');
-      const hdr  = document.querySelector('.quickstart-header');
-      if (!body) return;
-      const collapsed = body.classList.toggle('collapsed');
-      if (btn) btn.textContent = collapsed ? '展开 ▼' : '收起 ▲';
-      if (hdr) hdr.setAttribute('aria-expanded', String(!collapsed));
-      // 当步骤完成超过一半时，初始化时自动折叠
-      try { localStorage.setItem('oc-qs-collapsed', String(collapsed)); } catch(e){}
-    }
-
-    // 初始化：超过一半步骤完成时自动折叠
-    (function initQuickStart() {
-      try {
-        const saved = localStorage.getItem('oc-qs-collapsed');
-        if (saved === 'true') {
-          const body = document.getElementById('quickstart-body');
-          const btn  = document.getElementById('qs-toggle-btn');
-          if (body) { body.classList.add('collapsed'); }
-          if (btn)  { btn.textContent = '展开 ▼'; }
-        }
-      } catch(e){}
-    })();
-
-    // / 快捷键触发搜索（Ekko建议#3）
-    document.addEventListener('keydown', function(e) {
-      const target = e.target;
-      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (e.key === '/' && !inInput && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        const btn = document.getElementById('search-trigger');
-        if (btn) btn.click();
-      }
-    });
-
-    // 心跳指示灯更新（Ekko建议#3）：监听 SSE 状态
-    (function watchHeartbeat() {
-      const dot   = document.getElementById('heartbeat-dot');
-      const label = document.getElementById('heartbeat-label');
-      const ind   = document.getElementById('heartbeat-indicator');
-      if (!dot || !label) return;
-
-      function setHeartbeat(status) {
-        dot.className = 'heartbeat-dot';
-        if (status === 'online') {
-          dot.classList.remove('offline','error');
-          label.textContent = '系统在线';
-          if(ind) ind.style.color = '#16A34A';
-        } else if (status === 'error') {
-          dot.classList.add('error');
-          label.textContent = '连接异常';
-          if(ind) ind.style.color = '#DC2626';
-        } else {
-          dot.classList.add('offline');
-          label.textContent = '离线';
-          if(ind) ind.style.color = '#94A3B8';
-        }
-      }
-
-      // 监听 SSE 状态变化
-      const observer = new MutationObserver(function() {
-        const sseEl = document.getElementById('sse-status');
-        if (!sseEl) return;
-        const txt = sseEl.textContent || '';
-        if (txt.includes('已连接') || txt.includes('connected')) setHeartbeat('online');
-        else if (txt.includes('断开') || txt.includes('error') || txt.includes('失败')) setHeartbeat('error');
-        else setHeartbeat('offline');
-      });
-      const sseEl = document.getElementById('sse-status');
-      if (sseEl) observer.observe(sseEl, { childList: true, subtree: true, characterData: true });
-      // 初始检查
-      setHeartbeat('online');
-    })();
-
-    // 移动端底部导航高亮同步
-    (function syncMobileNav() {
-      const buttons = document.querySelectorAll('.mobile-nav-btn');
-      if (!buttons.length) return;
-      // 监听页面切换
-      const origNav = window.navigateTo;
-      window.navigateTo = function(route) {
-        buttons.forEach(b => {
-          b.classList.toggle('active', b.dataset.route === route);
-          b.removeAttribute('aria-current');
-          if (b.dataset.route === route) b.setAttribute('aria-current', 'page');
-        });
-        if (origNav) origNav(route);
-      };
-    })();
-
-    // KPI 阻塞项同步到移动端角标
-    (function syncBlockerBadge() {
-      const badge = document.getElementById('mobile-blocker-badge');
-      if (!badge) return;
-      const kpiQueue = document.getElementById('kpi-queue');
-      if (!kpiQueue) return;
-      const obs = new MutationObserver(function() {
-        const val = parseInt(kpiQueue.textContent) || 0;
-        badge.textContent = String(val);
-        badge.style.display = val > 0 ? 'flex' : 'none';
-      });
-      obs.observe(kpiQueue, { childList: true, subtree: true, characterData: true });
-    })();
-    </script>
 
     <script type="module" src="/assets/app.js"></script>
   </body>

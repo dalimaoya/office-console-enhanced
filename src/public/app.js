@@ -450,7 +450,7 @@ function formatDashboardMeta(payload, lastCheck) {
   const sourceLabel = getSourceLabel(payload);
   const checkedAt = formatChinaTime(lastCheck, '');
   if (sourceLabel) parts.push(sourceLabel);
-  if (checkedAt) parts.push(`检查时间：${checkedAt}（北京时间）`);
+  if (checkedAt) parts.push(`检查时间：${checkedAt}`);
   return parts.join(' · ') || '检查时间：—';
 }
 
@@ -1184,9 +1184,13 @@ function renderSettingsPanel() {
 
   const d = payload.data || {};
 
+  // 兼容后端字段名：tokenEnabled/dryRunEnabled 与 tokenAuth/dryRun
+  const tokenAuth = d.tokenAuth ?? d.tokenEnabled ?? false;
+  const dryRun    = d.dryRun    ?? d.dryRunEnabled ?? false;
+
   // Sync into shared security state
   state.security.readonlyMode = d.readonlyMode ?? state.security.readonlyMode;
-  state.security.tokenAuth    = d.tokenAuth    ?? state.security.tokenAuth;
+  state.security.tokenAuth    = tokenAuth;
 
   if (stateEl) { stateEl.className = 'state-box success'; stateEl.textContent = '安全设置已加载'; }
 
@@ -1194,17 +1198,17 @@ function renderSettingsPanel() {
   const modeDisplay = document.querySelector('#security-mode-display');
   if (modeDisplay) {
     modeDisplay.innerHTML = d.readonlyMode
-      ? `<span class="security-icon">🔒</span><span class="security-label readonly-text">只读模式</span>`
-      : `<span class="security-icon">🔓</span><span class="security-label readwrite-text">读写模式</span>`;
+      ? `<span class="security-icon">🔒</span><span class="security-label readonly-text">只读模式（当前状态：只读）</span>`
+      : `<span class="security-icon">🔓</span><span class="security-label readwrite-text">读写模式（当前状态：可写）</span>`;
   }
 
   // Token 鉴权
   const tokenLabel = document.querySelector('#token-auth-label');
-  if (tokenLabel) tokenLabel.textContent = d.tokenAuth ? '✅ 已开启' : '⭕ 未开启';
+  if (tokenLabel) tokenLabel.textContent = tokenAuth ? '✅ 已启用（当前生效）' : '⭕ 未启用（本地模式）';
 
   // Dry-run（预演模式）
   const dryrunLabel = document.querySelector('#dryrun-label');
-  if (dryrunLabel) dryrunLabel.textContent = d.dryRun ? '✅ 已开启' : '⭕ 未开启';
+  if (dryrunLabel) dryrunLabel.textContent = dryRun ? '✅ 已启用（预演中）' : '⭕ 未启用（正常执行）';
 
   // 版本 / 运行时
   const versionLabel = document.querySelector('#version-inline-label');
@@ -1402,6 +1406,28 @@ function renderDashboard() {
     bannerDetail = `检测到错误状态，建议检查各组件 · 运行时长 ${sysUptime}`;
   }
 
+  // 构建 metric 卡片（4 个：检查时间、运行时长、平均响应、活跃 Agent）
+  const checkedAtDisplay = formatChinaTime(system.lastCheck, '—');
+  const metricCards = `
+    <div class="metrics" style="margin-top:var(--space-md)">
+      <div class="metric-card">
+        <div class="metric-label">检查时间</div>
+        <div class="metric-value" style="font-size:16px;font-weight:700">${escapeHtml(checkedAtDisplay)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">运行时长</div>
+        <div class="metric-value" style="font-size:16px;font-weight:700">${escapeHtml(sysUptime)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">平均响应</div>
+        <div class="metric-value" style="font-size:16px;font-weight:700">${escapeHtml(avgResponse)}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">活跃 Agent</div>
+        <div class="metric-value" style="font-size:16px;font-weight:700">${escapeHtml(String(agents.active ?? 0))} / ${escapeHtml(String(agents.total ?? 0))}</div>
+      </div>
+    </div>`;
+
   if (els.dashboardMetrics) els.dashboardMetrics.innerHTML = `
     ${payload.stale ? `<div class="state-box warning" style="margin-bottom:var(--space-sm)">当前展示的是 stale 降级缓存数据，建议稍后点击"强制重新加载"确认最新状态。</div>` : ''}
     <div class="system-health-banner ${bannerCls}">
@@ -1421,6 +1447,7 @@ function renderDashboard() {
         </div>
       </div>
     </div>
+    ${metricCards}
     ${renderDebugMeta(state.debugMeta.dashboard, 'Dashboard 调试头')}`;
 
   const recentActivity = workspaces.recentActivity || [];
@@ -1682,7 +1709,7 @@ function renderHealth() {
       <div class="list-card stack gap-sm">
         ${renderStatusRow('服务状态', formatStatusText(payload.data?.service?.status, '状态未知'))}
         ${renderStatusRow('Gateway', formatStatusText(gatewayStatus, '状态未知'))}
-        ${renderStatusRow('检查时间', `${checkedAtText}（北京时间）`)}
+        ${renderStatusRow('检查时间', checkedAtText)}
         ${sourceText ? renderStatusRow('数据来源', sourceText) : ''}
         ${payload.warning?.message ? renderStatusRow('提示信息', payload.warning.message) : ''}
       </div>
@@ -2828,9 +2855,16 @@ function renderCollaboration() {
   }
 
   // Extract sessions array from normalized formats
+  // sessions API 可能返回 payload.data 直接为数组，或 payload.data.items
   let sessions = [];
-  if (collabState.dataSource === 'sessions' && payload.data?.items) {
-    sessions = payload.data.items;
+  if (collabState.dataSource === 'sessions') {
+    if (Array.isArray(payload.data)) {
+      sessions = payload.data;
+    } else if (payload.data?.items) {
+      sessions = payload.data.items;
+    } else {
+      sessions = [];
+    }
   } else if (collabState.dataSource === 'collaboration') {
     sessions = Array.isArray(payload.data) ? payload.data : (payload.data?.items || payload.data?.sessions || []);
   } else if (collabState.dataSource === 'mock') {
@@ -2847,7 +2881,7 @@ function renderCollaboration() {
   }
   if (!listEl) return;
   if (!normalizedSessions.length) {
-    listEl.innerHTML = '<div class="empty-box">当前没有协作会话数据。</div>';
+    listEl.innerHTML = '<div class="empty-box" style="padding:24px;text-align:center">暂无协作会话数据<br><span class="muted" style="font-size:11px">待有 Agent 发起会话后自动显示</span></div>';
     return;
   }
 
@@ -3112,8 +3146,8 @@ async function loadUsage(period) {
   try {
     const [usageRes, byAgentRes, contextRes] = await Promise.all([
       apiFetch(`/api/v1/usage?period=${usageState.period}`),
-      apiFetch('/api/v1/usage/by-agent'),
-      apiFetch('/api/v1/usage/context-pressure'),
+      apiFetch(`/api/v1/usage/by-agent?period=${usageState.period}`),
+      apiFetch(`/api/v1/usage/context-pressure?period=${usageState.period}`),
     ]);
     usageState.data          = usageRes.payload;
     usageState.byAgent       = byAgentRes.payload;
@@ -3154,7 +3188,7 @@ function renderUsage() {
   const period      = d.period || usageState.period;
 
   const periodCN = period === 'today' ? '今日' : period === 'week' ? '本周' : escapeHtml(period);
-  if (stateEl) { stateEl.className = 'state-box success'; stateEl.textContent = `用量数据已加载 · 统计周期：${periodCN}`; }
+  if (stateEl) { stateEl.style.display = 'none'; }
 
   function fmtTokens(n) {
     if (n >= 1e7) return `${(n / 1e7).toFixed(2)} 千万`;
@@ -4619,8 +4653,13 @@ async function loadColdStart() {
   try {
     const { payload } = await apiFetch('/api/v1/cold-start');
     const data = payload?.data || payload || {};
-    const phase      = data.currentPhase || data.phase || '';
-    const activeObjs = data.activeObjects ?? data.activeCount ?? null;
+    // Fix(Ezreal 2026-03-20): align field names with actual cold-start-service DTO
+    const phase      = data.projectStage?.currentStage || data.currentPhase || data.phase || '';
+    const activeObjs = Number.isFinite(data.activeObjectCount)
+      ? data.activeObjectCount
+      : Array.isArray(data.activeObjects)
+        ? data.activeObjects.length
+        : (data.activeCount ?? null);
     const events     = Array.isArray(data.recentEvents) ? data.recentEvents : (data.events || []);
     const lastEvent  = events[0] || null;
     const blockers   = Array.isArray(data.blockers) ? data.blockers : [];
@@ -4644,9 +4683,10 @@ async function loadColdStart() {
     </div>`;
 
     if (lastEvent) {
-      const evType = escapeHtml(lastEvent.type || lastEvent.event || '事件');
-      const evMsg  = escapeHtml(lastEvent.message || lastEvent.description || JSON.stringify(lastEvent));
-      const evTime = lastEvent.timestamp ? `<span class="muted" style="font-size:var(--text-xs)">${new Date(lastEvent.timestamp).toLocaleString('zh-CN')}</span>` : '';
+      // Fix(Ezreal 2026-03-20): use real DTO fields event_type / description / ts
+      const evType = escapeHtml(lastEvent.event_type || lastEvent.type || lastEvent.event || '事件');
+      const evMsg  = escapeHtml(lastEvent.description || lastEvent.message || JSON.stringify(lastEvent));
+      const evTime = (lastEvent.ts || lastEvent.timestamp) ? `<span class="muted" style="font-size:var(--text-xs)">${new Date(lastEvent.ts || lastEvent.timestamp).toLocaleString('zh-CN')}</span>` : '';
       html += `<div class="settings-card" style="margin-top:var(--space-sm);padding:10px 14px">
         <div class="settings-card-title">📌 最近事件：${evType} ${evTime}</div>
         <div class="muted" style="font-size:var(--text-sm);margin-top:4px">${evMsg}</div>
@@ -4656,7 +4696,8 @@ async function loadColdStart() {
     }
 
     if (blockers.length > 0) {
-      const blockerItems = blockers.map(b => `<li style="color:var(--color-danger)">${escapeHtml(String(b.message || b))}</li>`).join('');
+      // Fix(Ezreal 2026-03-20): read b.description (real DTO field) instead of b.message
+      const blockerItems = blockers.map(b => `<li style="color:var(--color-danger)">${escapeHtml(String(b.description || b.id || b.message || '未知阻塞项'))}</li>`).join('');
       html += `<div class="settings-card" style="margin-top:var(--space-sm);padding:10px 14px;border-left:3px solid var(--color-danger)">
         <div class="settings-card-title">🚧 阻塞项（${blockers.length}）</div>
         <ul style="margin:6px 0 0 16px;padding:0;font-size:var(--text-sm)">${blockerItems}</ul>
@@ -4684,14 +4725,16 @@ async function loadInstances() {
   listEl.innerHTML = '';
   try {
     const { payload } = await apiFetch('/api/v1/instances');
-    const items = payload?.data?.items || payload?.data || (Array.isArray(payload) ? payload : []);
+    // 兼容后端返回 instances/items 两种字段名
+    const items = payload?.data?.instances || payload?.data?.items || payload?.data || (Array.isArray(payload) ? payload : []);
     if (stateEl) stateEl.style.display = 'none';
     if (!items.length) {
       listEl.innerHTML = '<div class="empty-box">还没有项目组 · 点击「新建项目组」开始</div>';
       return;
     }
     listEl.innerHTML = items.map(inst => {
-      const id       = escapeHtml(inst.id || '');
+      // 兼容 instanceId / id 两种主键字段名
+      const id       = escapeHtml(inst.instanceId || inst.id || '');
       const name     = escapeHtml(inst.name || inst.projectName || id);
       const status   = inst.status || 'active';
       const isActive = status === 'active';

@@ -13,6 +13,7 @@ import { getFeishuNotifier } from './feishu-notifier.js';
 import { log } from '../utils/logger.js';
 import type { ContextPressureItem } from './usage-service.js';
 import { getAlertThresholds } from './settings-service.js';
+import { appendTimelineEvent } from './timeline-service.js';
 
 // 避免短时间内对同一 agent 重复发送通知（简单内存防重）
 const contextAlertSentAt = new Map<string, number>();
@@ -37,7 +38,7 @@ export function checkAndNotifyContextPressure(items: ContextPressureItem[]): voi
     const contextPressureThreshold = thresholds.contextPressurePercent / 100;
 
     for (const item of items) {
-      if (item.pressureRatio < contextPressureThreshold) continue;
+      if (item.pressureRatio <= contextPressureThreshold) continue;
 
       const now = Date.now();
       const lastSent = contextAlertSentAt.get(item.agentId) ?? 0;
@@ -49,6 +50,12 @@ export function checkAndNotifyContextPressure(items: ContextPressureItem[]): voi
 
       try {
         await notifier.sendText(message);
+        await appendTimelineEvent({
+          type: 'alert_context_pressure_triggered',
+          agentId: item.agentId,
+          summary: `[${item.agentId}] context 压力达到 ${ratio}%`,
+          data: { ratio, thresholdPercent: thresholds.contextPressurePercent },
+        });
         log('info', 'notify_context_pressure_sent', { agentId: item.agentId, ratio });
       } catch (err) {
         log('warn', 'notify_context_pressure_failed', {
@@ -96,6 +103,12 @@ export function checkAndNotifyIdleAgents(agents: AgentIdleInfo[]): void {
 
       try {
         await notifier.sendText(message);
+        await appendTimelineEvent({
+          type: 'alert_idle_agent_triggered',
+          agentId: agent.agentId,
+          summary: `[${agent.agentId}] 空闲 ${idleHours}h 超过阈值`,
+          data: { idleHours: Number(idleHours), thresholdMinutes: thresholds.agentIdleMinutes },
+        });
         log('info', 'notify_idle_agent_sent', { agentId: agent.agentId, idleHours, thresholdMinutes: thresholds.agentIdleMinutes });
       } catch (err) {
         log('warn', 'notify_idle_agent_failed', {
@@ -113,7 +126,7 @@ export function checkAndNotifyDailyCost(dailyCostUSD: number): void {
     if (!notifier.isConfigured) return;
 
     const thresholds = await getAlertThresholds();
-    if (dailyCostUSD < thresholds.costDailyUSD) return;
+    if (dailyCostUSD <= thresholds.costDailyUSD) return;
 
     const now = Date.now();
     if (now - dailyCostAlertSentAt < DAILY_COST_ALERT_COOLDOWN_MS) return;
@@ -123,6 +136,14 @@ export function checkAndNotifyDailyCost(dailyCostUSD: number): void {
 
     try {
       await notifier.sendText(message);
+      await appendTimelineEvent({
+        type: 'alert_daily_cost_triggered',
+        summary: `今日费用 $${dailyCostUSD.toFixed(2)} 超过阈值`,
+        data: {
+          dailyCostUSD: Number(dailyCostUSD.toFixed(4)),
+          thresholdUSD: thresholds.costDailyUSD,
+        },
+      });
       log('info', 'notify_daily_cost_sent', {
         dailyCostUSD: Number(dailyCostUSD.toFixed(4)),
         thresholdUSD: thresholds.costDailyUSD,

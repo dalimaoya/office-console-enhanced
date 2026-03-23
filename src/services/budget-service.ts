@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getUsageByAgent, getContextPressure } from './usage-service.js';
+import { getAlertThresholds, updateAlertThresholds } from './settings-service.js';
 
 export interface BudgetPolicy {
   daily_warn_usd: number;
@@ -31,6 +32,18 @@ async function ensurePolicyDir(): Promise<void> {
 }
 
 export async function getBudgetPolicy(): Promise<BudgetPolicy> {
+  const thresholds = await getAlertThresholds().catch(() => null);
+  if (thresholds) {
+    const dailyThreshold = Number(thresholds.costDailyUSD ?? DEFAULT_POLICY.daily_over_usd);
+    const contextThreshold = Number((thresholds.contextPressurePercent ?? DEFAULT_POLICY.context_pressure_over * 100) / 100);
+    return {
+      daily_warn_usd: dailyThreshold,
+      daily_over_usd: dailyThreshold,
+      context_pressure_warn: contextThreshold,
+      context_pressure_over: contextThreshold,
+    };
+  }
+
   await ensurePolicyDir();
   try {
     const raw = await readFile(BUDGET_POLICY_PATH, 'utf8');
@@ -50,10 +63,16 @@ export async function updateBudgetPolicy(input: Partial<BudgetPolicy>): Promise<
   const current = await getBudgetPolicy();
   const next: BudgetPolicy = {
     daily_warn_usd: Number(input.daily_warn_usd ?? current.daily_warn_usd),
-    daily_over_usd: Number(input.daily_over_usd ?? current.daily_over_usd),
+    daily_over_usd: Number(input.daily_over_usd ?? input.daily_warn_usd ?? current.daily_over_usd),
     context_pressure_warn: Number(input.context_pressure_warn ?? current.context_pressure_warn),
-    context_pressure_over: Number(input.context_pressure_over ?? current.context_pressure_over),
+    context_pressure_over: Number(input.context_pressure_over ?? input.context_pressure_warn ?? current.context_pressure_over),
   };
+
+  await updateAlertThresholds({
+    costDailyUSD: next.daily_over_usd,
+    contextPressurePercent: Number((next.context_pressure_over * 100).toFixed(2)),
+  });
+
   await ensurePolicyDir();
   await writeFile(BUDGET_POLICY_PATH, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
   return next;
@@ -68,7 +87,7 @@ function levelByThreshold(value: number, warn: number, over: number): 'ok' | 'wa
 export async function getBudgetStatus(): Promise<BudgetStatusResponse> {
   const [policy, usage, context] = await Promise.all([
     getBudgetPolicy(),
-    getUsageByAgent('today'),
+    getUsageByAgent({ period: 'today' }),
     getContextPressure(),
   ]);
 
@@ -81,13 +100,9 @@ export async function getBudgetStatus(): Promise<BudgetStatusResponse> {
 
   return {
     daily_cost_usd: dailyCost,
-    status: levelByThreshold(dailyCost, policy.daily_warn_usd, policy.daily_over_usd),
+    status: dailyCost > policy.daily_over_usd ? 'over' : 'ok',
     context_pressure: contextPressure,
-    context_status: levelByThreshold(
-      contextPressure,
-      policy.context_pressure_warn,
-      policy.context_pressure_over,
-    ),
+    context_status: contextPressure > policy.context_pressure_over ? 'over' : 'ok',
     policy,
   };
 }
