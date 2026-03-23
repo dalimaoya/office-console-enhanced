@@ -17,6 +17,7 @@
 - [测试与验证](#测试与验证)
 - [数据目录说明](#数据目录说明)
 - [常见问题](#常见问题)
+- [参考与致谢](#参考与致谢)
 
 ---
 
@@ -556,6 +557,62 @@ office-dashboard-adapter/
 ├── package.json
 └── tsconfig.json
 ```
+
+---
+
+## 参考与致谢
+
+本项目在设计和实现阶段参考并借鉴了 **[openclaw-control-center](https://github.com/TianyiDataScience/openclaw-control-center)**（作者：[@TianyiDataScience](https://github.com/TianyiDataScience)），特此致谢。
+
+### 主要借鉴内容
+
+该项目是一个面向非技术运营用户的 OpenClaw 本地可观测性控制中心，其核心理念是：
+
+> "Built for non-technical operators who need observability and certainty, not raw backend payloads."
+
+我们在以下功能和设计上受其启发或直接参考了其实现思路：
+
+| 功能 | 借鉴来源 | 说明 |
+|------|---------|------|
+| **操作审计日志** | openclaw-control-center | 所有写操作落盘留痕，结构化审计日志体系 |
+| **安全门控 DryRun** | openclaw-control-center | 写操作二次确认机制，降低误操作风险 |
+| **Timeline 事件采集层** | openclaw-control-center | `timeline.log` + 事件流采集，构建历史追溯能力 |
+| **Connection Health 引导卡** | openclaw-control-center | 集成未配置时以业务语言引导，而非空白页 |
+| **持久化通知中心（ACK/Snooze）** | openclaw-control-center | `notification-center` 模式：Toast 升级为持久化收件箱 |
+| **预算告警阈值** | openclaw-control-center | 双层预算治理体系（warn/over），自动预警成本风险 |
+| **Inspector 侧边栏（三栏布局）** | openclaw-control-center | 232px 导航 + 主内容 + 右侧详情面板，上下文不中断交互范式 |
+| **每页适用场景提示** | openclaw-control-center | "Best when you want to..." 场景说明设计模式 |
+| **安全设置业务化描述** | openclaw-control-center | 把技术参数翻译成用户可读的业务语言 |
+| **玻璃拟态视觉效果** | openclaw-control-center | `backdrop-filter: blur()` + `radial-gradient` 光晕方案 |
+| **明暗主题切换** | openclaw-control-center | `data-theme` + `localStorage` 持久化双套 CSS 变量体系 |
+| **刷新状态保存** | openclaw-control-center | `sessionStorage` 保存表单和滚动位置，刷新后恢复 |
+| **全局状态条（Status Strip）** | openclaw-control-center | 顶部高密度状态指标带设计概念 |
+| **快照导出/导入** | openclaw-control-center | `export-snapshots/` 体系，跨环境状态还原 |
+| **差量摘要** | openclaw-control-center | 两次快照间变化 diff 的摘要生成模式 |
+| **增量轮询策略** | openclaw-control-center | 按数据活跃度设置不同 TTL，减少不必要全量查询 |
+
+### 我们的差异化
+
+在参考的基础上，我们在以下方向做了独立设计和延伸：
+
+| 差异点 | 我们的做法 | 原项目做法 |
+|--------|-----------|-----------|
+| **定位** | 可写、可搜、可控制的「工作工具」 | 以观测为主的只读工具 |
+| **主入口** | 飞书（消息驱动） | 浏览器主动访问 |
+| **技术栈** | TypeScript + Express + ESM | 原生 `node:http` + CommonJS，零依赖 |
+| **多 Agent 协作** | 明确角色分工（提莫/艾克/伊泽瑞尔等），各角色独立 bot | 单 agent 视角 |
+| **写操作能力** | Tasks 创建/状态变更、Memory 编辑、配置应用 | 默认全部关闭写操作 |
+| **全站搜索** | 搜索框 + `Cmd/Ctrl+K`，按 agent/任务/会话分组 | 无 |
+| **SSE 实时推送** | 指数退避重连，页面可见性感知 | 轮询模式 |
+| **飞书告警扩展** | context 压力 / agent 长时间空闲，异步防重 | 无飞书集成 |
+| **PM2 生产部署** | 完整 ecosystem 配置，一键生产启动 | 无 |
+| **前后端架构** | 前后端分离，Controller/Service/Adapter 三层 | SSR 单文件（18000 行 HTML 字符串） |
+
+### 关于代码复用
+
+本项目未直接复制 openclaw-control-center 的源代码。上表所列借鉴内容均基于功能分析和设计评审，由本团队重新实现。如有疑问，欢迎在 Issues 中沟通。
+
+对标评审的完整记录见：[`reviews/2026-03-19-openclaw-control-center-benchmark-review.md`](reviews/2026-03-19-openclaw-control-center-benchmark-review.md)
 
 ---
 
