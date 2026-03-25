@@ -1,0 +1,16 @@
+# Runtime data
+data/cache-snapshots.json
+data/cold-start-snapshot.json
+data/events.ndjson
+data/operation-audit.log
+data/timeline.log
+
+# Build output
+dist/
+
+# Logs
+logs/
+
+# Node
+node_modules/
+*.log
