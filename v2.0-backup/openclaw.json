@@ -1,0 +1,512 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.11",
+    "lastTouchedAt": "2026-03-14T09:11:14.638Z"
+  },
+  "auth": {
+    "profiles": {
+      "openai-codex:default": {
+        "provider": "openai-codex",
+        "mode": "oauth"
+      },
+      "anthropic:manual": {
+        "provider": "anthropic",
+        "mode": "token"
+      }
+    },
+    "order": {
+      "openai-codex": [
+        "openai-codex:default"
+      ],
+      "anthropic": [
+        "anthropic:manual"
+      ]
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "siliconflow": {
+        "baseUrl": "https://api.siliconflow.cn/v1",
+        "apiKey": "${SILICONFLOW_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "deepseek-ai/DeepSeek-V3.2",
+            "name": "DeepSeek V3.2",
+            "contextWindow": 160000
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6",
+        "fallbacks": [
+          "siliconflow/deepseek-ai/DeepSeek-V3.2",
+          "openai-codex/gpt-5.4"
+        ]
+      },
+      "models": {
+        "anthropic/claude-sonnet-4-6": {
+          "alias": "cc-sonnet-4-6"
+        },
+        "anthropic/claude-opus-4-6": {
+          "alias": "cc-opus-4-6"
+        },
+        "siliconflow/deepseek-ai/DeepSeek-V3.2": {
+          "alias": "sf-deepseek-v3-2"
+        },
+        "openai-codex/gpt-5.4": {
+          "alias": "codex"
+        }
+      },
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "maxConcurrent": 2,
+      "subagents": {
+        "maxConcurrent": 3
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": [
+            "siliconflow/deepseek-ai/DeepSeek-V3.2"
+          ]
+        },
+        "identity": {
+          "name": "Azir",
+          "emoji": "👑"
+        }
+      },
+      {
+        "id": "agent-aioffice-jayce",
+        "name": "agent-aioffice-jayce",
+        "workspace": "/root/.openclaw/workspace-agent-aioffice-jayce",
+        "agentDir": "/root/.openclaw/agents/agent-aioffice-jayce/agent",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": [
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "杰斯"
+        }
+      },
+      {
+        "id": "agent-architect-jax",
+        "name": "agent-architect-jax",
+        "workspace": "/root/.openclaw/workspace-agent-architect-jax",
+        "agentDir": "/root/.openclaw/agents/agent-architect-jax/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "贾克斯"
+        }
+      },
+      {
+        "id": "agent-backend-leona",
+        "name": "agent-backend-leona",
+        "workspace": "/root/.openclaw/workspace-agent-backend-leona",
+        "agentDir": "/root/.openclaw/agents/agent-backend-leona/agent",
+        "model": {
+          "primary": "openai-codex/gpt-5.4",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6"
+          ]
+        },
+        "skills": [
+          "feishu-doc",
+          "feishu-drive",
+          "xlsx"
+        ],
+        "identity": {
+          "name": "雷欧娜"
+        }
+      },
+      {
+        "id": "agent-codingqa-galio",
+        "name": "agent-codingqa-galio",
+        "workspace": "/root/.openclaw/workspace-agent-codingqa-galio",
+        "agentDir": "/root/.openclaw/agents/agent-codingqa-galio/agent",
+        "model": {
+          "primary": "openai-codex/gpt-5.4",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6"
+          ]
+        },
+        "identity": {
+          "name": "加里奥"
+        }
+      },
+      {
+        "id": "agent-frontend-ezreal",
+        "name": "agent-frontend-ezreal",
+        "workspace": "/root/.openclaw/workspace-agent-frontend-ezreal",
+        "agentDir": "/root/.openclaw/agents/agent-frontend-ezreal/agent",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": [
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "伊泽瑞尔"
+        }
+      },
+      {
+        "id": "agent-orchestrator-teemo",
+        "name": "agent-orchestrator-teemo",
+        "workspace": "/root/.openclaw/workspace-agent-orchestrator-teemo",
+        "agentDir": "/root/.openclaw/agents/agent-orchestrator-teemo/agent",
+        "model": {
+          "primary": "anthropic/claude-sonnet-4-6",
+          "fallbacks": [
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "提莫"
+        },
+        "subagents": {
+          "allowAgents": [
+            "agent-aioffice-jayce",
+            "agent-architect-jax",
+            "agent-product-ekko",
+            "agent-frontend-ezreal",
+            "agent-backend-leona",
+            "agent-codingqa-galio",
+            "agent-ui-lux",
+            "agent-technical-advisor-codex"
+          ]
+        }
+      },
+      {
+        "id": "agent-product-ekko",
+        "name": "agent-product-ekko",
+        "workspace": "/root/.openclaw/workspace-agent-product-ekko",
+        "agentDir": "/root/.openclaw/agents/agent-product-ekko/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "艾克"
+        }
+      },
+      {
+        "id": "agent-ui-lux",
+        "name": "agent-ui-lux",
+        "workspace": "/root/.openclaw/workspace-agent-ui-lux",
+        "agentDir": "/root/.openclaw/agents/agent-ui-lux/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "拉克丝"
+        }
+      },
+      {
+        "id": "agent-twisted-fate",
+        "name": "agent-twisted-fate",
+        "workspace": "/root/.openclaw/workspace-agent-twisted-fate",
+        "agentDir": "/root/.openclaw/agents/agent-twisted-fate/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "卡牌大师",
+          "emoji": "🃏"
+        }
+      },
+      {
+        "id": "agent-braum",
+        "name": "agent-braum",
+        "workspace": "/root/.openclaw/workspace-agent-braum",
+        "agentDir": "/root/.openclaw/agents/agent-braum/agent",
+        "model": {
+          "primary": "openai-codex/gpt-5.4",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6"
+          ]
+        },
+        "identity": {
+          "name": "布隆",
+          "emoji": "🛡️"
+        }
+      },
+      {
+        "id": "agent-heimerdinger",
+        "name": "agent-heimerdinger",
+        "workspace": "/root/.openclaw/workspace-agent-heimerdinger",
+        "agentDir": "/root/.openclaw/agents/agent-heimerdinger/agent",
+        "model": {
+          "primary": "siliconflow/deepseek-ai/DeepSeek-V3.2",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "大发明家",
+          "emoji": "⚙️"
+        }
+      },
+      {
+        "id": "agent-technical-advisor-codex",
+        "name": "agent-technical-advisor-codex",
+        "workspace": "/root/.openclaw/workspace-agent-technical-advisor-codex",
+        "agentDir": "/root/.openclaw/agents/agent-technical-advisor-codex/agent",
+        "model": {
+          "primary": "openai-codex/gpt-5.4",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6"
+          ]
+        },
+        "identity": {
+          "name": "瑞兹",
+          "emoji": "🧭"
+        }
+      },
+      {
+        "id": "agent-fullstack-viktor",
+        "name": "agent-fullstack-viktor",
+        "workspace": "/root/.openclaw/workspace-agent-fullstack-viktor",
+        "agentDir": "/root/.openclaw/agents/agent-fullstack-viktor/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "维克托",
+          "emoji": "⚙️"
+        }
+      },
+      {
+        "id": "agent-product-swain",
+        "name": "agent-product-swain",
+        "workspace": "/root/.openclaw/workspace-agent-product-swain",
+        "agentDir": "/root/.openclaw/agents/agent-product-swain/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "斯维因",
+          "emoji": "📌"
+        },
+        "subagents": {
+          "allowAgents": [
+            "agent-fullstack-viktor",
+            "agent-qa-bard"
+          ]
+        }
+      },
+      {
+        "id": "agent-qa-bard",
+        "name": "agent-qa-bard",
+        "workspace": "/root/.openclaw/workspace-agent-qa-bard",
+        "agentDir": "/root/.openclaw/agents/agent-qa-bard/agent",
+        "model": {
+          "primary": "anthropic/claude-opus-4-6",
+          "fallbacks": [
+            "anthropic/claude-sonnet-4-6",
+            "openai-codex/gpt-5.4"
+          ]
+        },
+        "identity": {
+          "name": "巴德",
+          "emoji": "🧪"
+        }
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "type": "route",
+      "agentId": "main",
+      "match": {
+        "channel": "feishu",
+        "accountId": "default"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "agent-twisted-fate",
+      "match": {
+        "channel": "feishu",
+        "accountId": "twisted-fate"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "agent-braum",
+      "match": {
+        "channel": "feishu",
+        "accountId": "braum"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "agent-orchestrator-teemo",
+      "match": {
+        "channel": "feishu",
+        "accountId": "orchestrator-teemo"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "agent-fullstack-viktor",
+      "match": {
+        "channel": "feishu",
+        "accountId": "fullstack-viktor"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "agent-product-swain",
+      "match": {
+        "channel": "feishu",
+        "accountId": "product-swain"
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "agent-qa-bard",
+      "match": {
+        "channel": "feishu",
+        "accountId": "qa-bard"
+      }
+    }
+  ],
+  "messages": {
+    "ackReactionScope": "group-mentions"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "defaultAccount": "default",
+      "accounts": {
+        "default": {
+          "appId": "cli_a9273710d37a5bd3",
+          "appSecret": "Sz6pEM41jFPkLr1JHhbCSbiFWmGISrXi"
+        },
+        "twisted-fate": {
+          "appId": "cli_a93b3d5d69b89bc7",
+          "appSecret": "GWU1M49LBX7Ha6ANrsZJneEU2WjcaQdw"
+        },
+        "braum": {
+          "appId": "cli_a936b523f978dcc7",
+          "appSecret": "55GIjE4Rz9dIAN2phI7wRgOnXIBHV6EU"
+        },
+        "heimerdinger": {
+          "appId": "cli_a93b3d08b078dbc9",
+          "appSecret": "2xvoHhCKx0Lr2kA25VI5veGgZUjZynz2"
+        },
+        "aioffice-jayce": {
+          "appId": "cli_a93bc65775389bd3",
+          "appSecret": "f2PZUBie7p4Z3yKycfLGBegOVaLq6aAr"
+        },
+        "ui-lux": {
+          "appId": "cli_a93bc61e6c38dbce",
+          "appSecret": "Luv6NWXbS5K2pOx0LSNKqc3n0GoTz88D"
+        },
+        "codingqa-galio": {
+          "appId": "cli_a93bc5f13b785bce",
+          "appSecret": "O5xfdsmds5CJzbT5iX5thoYIM2Y0nzwU"
+        },
+        "backend-leona": {
+          "appId": "cli_a93bc5c788389bd3",
+          "appSecret": "YNz9kW3XlzLZtCxtjzPri0qfMLjyxQ2w"
+        },
+        "frontend-ezreal": {
+          "appId": "cli_a93bc5d485785bd1",
+          "appSecret": "eZu55GKZUEyjQqhGzrwvghq3vTbqw0yy"
+        },
+        "product-ekko": {
+          "appId": "cli_a93bc5a7cfb81bcd",
+          "appSecret": "6I8ZGGTFHmaiWBZhA9xQkeiSLKUy8Ihn"
+        },
+        "architect-jax": {
+          "appId": "cli_a93bc5b0aa78dbb6",
+          "appSecret": "Lc1eUM09EpyTnX0UtwvLpexG8sR0JC2h"
+        },
+        "orchestrator-teemo": {
+          "appId": "cli_a9248394a8b9dbc0",
+          "appSecret": "bbyV2PEjQjL0gRhXGxcVBeYFP7orwJ1P"
+        },
+        "technical-advisor-ryze": {
+          "appId": "cli_a93ee79f36a1dbd6",
+          "appSecret": "14dAsivI1WCIWqpg1XIXUe6DK3j43nzO"
+        },
+        "fullstack-viktor": {
+          "appId": "cli_a936a6df1678dcc5",
+          "appSecret": "BbJs9M3Soxi2rkCi1aNrNgJvmFq8xIjT"
+        },
+        "product-swain": {
+          "appId": "cli_a936a6b73b785cce",
+          "appSecret": "SPMnWVjUhysGptDENXDKycY4nQ4CHf2r"
+        },
+        "qa-bard": {
+          "appId": "cli_a936a684c238dcd1",
+          "appSecret": "PHNhMrJ8l6yD26EOkgM5ncF0QujudL3o"
+        }
+      },
+      "groupPolicy": "open",
+      "requireMention": true,
+      "groupAllowFrom": [
+        "oc_336cb0396e1a0a81d9fa5e62a088ea00"
+      ]
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "auth": {
+      "mode": "token",
+      "token": "5a915a8950268003416d269b5af1ee558f2e8c6274ca5b75"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "feishu": {
+        "enabled": true
+      }
+    }
+  }
+}
